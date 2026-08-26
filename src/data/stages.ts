@@ -1,0 +1,68 @@
+import type { Stage } from '../types/crm';
+
+export const DEFAULT_STAGES: Stage[] = [
+    {
+        id: 'new_lead',
+        name: 'New Lead',
+        color: 'sky',
+        accentHex: '#0284c7',
+        order: 1,
+        description: 'Fresh borrower leads & incoming mortgage inquiries',
+    },
+    {
+        id: 'full_application',
+        name: 'Full Application (1003)',
+        color: 'indigo',
+        accentHex: '#4f46e5',
+        order: 2,
+        description: 'Collecting borrower info, credit pull & 1003 application',
+    },
+    {
+        id: 'pitching',
+        name: 'Pitch & Pre-Approval',
+        color: 'amber',
+        accentHex: '#d97706',
+        order: 3,
+        description: 'Presenting rate quotes, loan options & issuing Pre-Approval letter',
+    },
+    {
+        id: 'docs_collection',
+        name: 'Collecting Documents',
+        color: 'purple',
+        accentHex: '#9333ea',
+        order: 4,
+        description: 'Gathering W-2s, paystubs, bank statements & tax returns',
+    },
+    {
+        id: 'initial_disclosures',
+        name: 'Initial Disclosures (Discos)',
+        color: 'rose',
+        accentHex: '#e11d48',
+        order: 5,
+        description: 'Out for borrower electronic signature & disclosure compliance',
+    },
+    {
+        id: 'underwriting_clear_to_close',
+        name: 'Underwriting & CTC',
+        color: 'teal',
+        accentHex: '#0d9488',
+        order: 6,
+        description: 'Underwriting conditional approval, appraisal & Clear to Close',
+    },
+    {
+        id: 'funded_closed',
+        name: 'Funded & Closed 🎉',
+        color: 'emerald',
+        accentHex: '#059669',
+        order: 7,
+        description: 'Loan funded, closed & commission earned!',
+    },
+    {
+        id: 'lost',
+        name: 'Archived / Denied',
+        color: 'slate',
+        accentHex: '#64748b',
+        order: 8,
+        description: 'Withdrawn, unqualified or non-responsive leads',
+    },
+];
