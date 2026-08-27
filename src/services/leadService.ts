@@ -102,8 +102,9 @@ function mapLeadToRow(lead: Lead): Record<string, any> {
         co_borrower_employer: lead.coBorrowerEmployer || null,
     };
 
-    // If ID looks like a valid UUID, pass it; otherwise let Supabase generate UUID
-    if (lead.id && lead.id.includes('-')) {
+    // If ID is a valid UUID, include it; otherwise omit row.id so Supabase generates a clean UUID
+    const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(lead.id);
+    if (lead.id && isUUID) {
         row.id = lead.id;
     }
 
@@ -197,15 +198,18 @@ export async function deleteLeadService(leadId: string): Promise<boolean> {
 
     const client = getSupabaseClient();
     if (client && isSupabaseConfigured()) {
-        try {
-            const { error } = await client.from('leads').delete().eq('id', leadId);
-            if (error) {
-                console.error('Supabase delete error:', error.message);
+        const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(leadId);
+        if (isUUID) {
+            try {
+                const { error } = await client.from('leads').delete().eq('id', leadId);
+                if (error) {
+                    console.error('Supabase delete error:', error.message);
+                    return false;
+                }
+            } catch (err) {
+                console.error('Failed to delete from Supabase:', err);
                 return false;
             }
-        } catch (err) {
-            console.error('Failed to delete from Supabase:', err);
-            return false;
         }
     }
     return true;

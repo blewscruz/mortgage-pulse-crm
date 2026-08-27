@@ -51,7 +51,7 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
         }
 
         const newLead: Lead = {
-            id: `lead-${Date.now()}`,
+            id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `lead-${Date.now()}`,
             name,
             email: email || `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
             phone: phone || '(555) 000-0000',

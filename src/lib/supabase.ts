@@ -27,7 +27,11 @@ export function getSavedSupabaseConfig(): SupabaseConfig {
         // ignore parse error
     }
 
-    return { url: '', anonKey: '' };
+    // Default fallback to configured active Supabase project
+    return {
+        url: 'https://shduhslhaoqbkmqhdrjq.supabase.co',
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNoZHVoc2xoYW9xYmttcWhkcmpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3OTU4MjcsImV4cCI6MjEwMzM3MTgyN30.dOu4P58dC1Sw4egtXcqkUafeiQc302MyBglcXLwtFrk'
+    };
 }
 
 export function saveSupabaseConfig(config: SupabaseConfig): void {
