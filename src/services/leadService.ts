@@ -7,11 +7,11 @@ const LOCAL_STORAGE_KEY = 'pulse_crm_leads_v2';
 // Utility to read local cache
 export function getLocalLeads(): Lead[] {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!saved) return INITIAL_LEADS;
+    if (!saved) return [];
     try {
         return JSON.parse(saved);
     } catch {
-        return INITIAL_LEADS;
+        return [];
     }
 }
 
@@ -132,10 +132,8 @@ export async function fetchLeadsService(): Promise<{ leads: Lead[]; isSupabase: 
         }
 
         if (!data || data.length === 0) {
-            // Seed initial data to Supabase if table is empty
-            console.log('Supabase table is empty. Seeding initial leads...');
-            await seedInitialLeadsToSupabase(client);
-            return { leads: getLocalLeads(), isSupabase: true };
+            saveLocalLeads([]);
+            return { leads: [], isSupabase: true };
         }
 
         const leads = data.map(mapRowToLead);
@@ -219,7 +217,7 @@ export async function deleteLeadService(leadId: string): Promise<boolean> {
  * Seed initial leads to Supabase
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function seedInitialLeadsToSupabase(client: any): Promise<void> {
+export async function seedInitialLeadsToSupabase(client: any): Promise<void> {
     const rows = INITIAL_LEADS.map((l) => {
         const row = mapLeadToRow(l);
         delete row.id; // Let Supabase assign clean UUIDs
