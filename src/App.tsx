@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navbar } from './components/Navbar';
 import { KanbanBoard } from './components/KanbanBoard';
 import { TaskView } from './components/TaskView';
@@ -12,11 +12,15 @@ import { QuickOutreachModal } from './components/QuickOutreachModal';
 
 import type { Lead, StageId, ViewMode, FilterState, ActivityType } from './types/crm';
 import { DEFAULT_STAGES } from './data/stages';
-import { INITIAL_LEADS } from './data/initialData';
 import { filterLeads, generateNotifications, getTodayString } from './utils/crmHelpers';
 import { Clock } from 'lucide-react';
-
-const LOCAL_STORAGE_KEY = 'pulse_crm_leads_v2';
+import {
+  fetchLeadsService,
+  upsertLeadService,
+  deleteLeadService,
+  subscribeToRealtimeLeads,
+  getLocalLeads
+} from './services/leadService';
 
 const validStageIds = new Set(DEFAULT_STAGES.map((s) => s.id));
 const mapLegacyStage = (stage: string): StageId => {
@@ -35,25 +39,24 @@ const mapLegacyStage = (stage: string): StageId => {
 };
 
 export const App: React.FC = () => {
-  const [leads, setLeads] = useState<Lead[]>(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed: Lead[] = JSON.parse(saved);
-        return parsed.map((l) => ({
-          ...l,
-          stage: mapLegacyStage(l.stage),
-        }));
-      } catch (e) {
-        console.error('Failed to parse saved CRM leads', e);
-      }
+  const [leads, setLeads] = useState<Lead[]>(() => getLocalLeads());
+
+  // Load leads from Supabase on mount
+  const loadLeads = useCallback(async () => {
+    const res = await fetchLeadsService();
+    if (res.leads) {
+      setLeads(res.leads.map((l) => ({ ...l, stage: mapLegacyStage(l.stage) })));
     }
-    return INITIAL_LEADS;
-  });
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(leads));
-  }, [leads]);
+    loadLeads();
+    const unsubscribe = subscribeToRealtimeLeads((updatedLeads) => {
+      setLeads(updatedLeads.map((l) => ({ ...l, stage: mapLegacyStage(l.stage) })));
+    });
+
+    return () => unsubscribe();
+  }, [loadLeads]);
 
   const [darkMode, setDarkMode] = useState<boolean>(true);
   useEffect(() => {
@@ -101,93 +104,102 @@ export const App: React.FC = () => {
 
   const filteredLeadsList = filterLeads(leads, filters);
 
-  const handleUpdateLead = (updatedLead: Lead) => {
+  const handleUpdateLead = async (updatedLead: Lead) => {
     setLeads((prev) => prev.map((l) => (l.id === updatedLead.id ? updatedLead : l)));
     if (selectedLead && selectedLead.id === updatedLead.id) {
       setSelectedLead(updatedLead);
     }
+    await upsertLeadService(updatedLead);
   };
 
-  const handleAddLead = (newLead: Lead) => {
+  const handleAddLead = async (newLead: Lead) => {
     setLeads((prev) => [newLead, ...prev]);
+    await upsertLeadService(newLead);
   };
 
-  const handleDeleteLead = (leadId: string) => {
+  const handleDeleteLead = async (leadId: string) => {
     setLeads((prev) => prev.filter((l) => l.id !== leadId));
     if (selectedLead && selectedLead.id === leadId) {
       setSelectedLead(null);
     }
+    await deleteLeadService(leadId);
   };
 
-  const handleToggleTaskComplete = (leadId: string, taskId: string) => {
-    setLeads((prev) =>
-      prev.map((lead) => {
-        if (lead.id === leadId) {
-          return {
-            ...lead,
-            tasks: lead.tasks.map((t) =>
-              t.id === taskId ? { ...t, completed: !t.completed } : t
-            ),
-          };
-        }
-        return lead;
-      })
-    );
+  const handleToggleTaskComplete = async (leadId: string, taskId: string) => {
+    const targetLead = leads.find((l) => l.id === leadId);
+    if (!targetLead) return;
+
+    const updatedLead: Lead = {
+      ...targetLead,
+      tasks: targetLead.tasks.map((t) =>
+        t.id === taskId ? { ...t, completed: !t.completed } : t
+      ),
+    };
+
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? updatedLead : l)));
+    if (selectedLead && selectedLead.id === leadId) {
+      setSelectedLead(updatedLead);
+    }
+    await upsertLeadService(updatedLead);
   };
 
-  const handleLogOutreach = (
+  const handleLogOutreach = async (
     leadId: string,
     activityType: ActivityType,
     title: string,
     description: string
   ) => {
-    setLeads((prev) =>
-      prev.map((lead) => {
-        if (lead.id === leadId) {
-          return {
-            ...lead,
-            lastContactedAt: new Date().toISOString(),
-            activities: [
-              {
-                id: `act-${Date.now()}`,
-                type: activityType,
-                title,
-                description,
-                timestamp: new Date().toISOString(),
-                author: 'You',
-              },
-              ...lead.activities,
-            ],
-          };
-        }
-        return lead;
-      })
-    );
+    const targetLead = leads.find((l) => l.id === leadId);
+    if (!targetLead) return;
+
+    const updatedLead: Lead = {
+      ...targetLead,
+      lastContactedAt: new Date().toISOString(),
+      activities: [
+        {
+          id: `act-${Date.now()}`,
+          type: activityType,
+          title,
+          description,
+          timestamp: new Date().toISOString(),
+          author: 'You',
+        },
+        ...targetLead.activities,
+      ],
+    };
+
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? updatedLead : l)));
+    if (selectedLead && selectedLead.id === leadId) {
+      setSelectedLead(updatedLead);
+    }
+    await upsertLeadService(updatedLead);
   };
 
-  const handleMoveStage = (leadId: string, newStage: StageId) => {
-    setLeads((prev) =>
-      prev.map((lead) => {
-        if (lead.id === leadId) {
-          const stageObj = DEFAULT_STAGES.find((s) => s.id === newStage);
-          return {
-            ...lead,
-            stage: newStage,
-            activities: [
-              {
-                id: `act-${Date.now()}`,
-                type: 'stage_change' as ActivityType,
-                title: `Stage updated to ${stageObj ? stageObj.name : newStage}`,
-                timestamp: new Date().toISOString(),
-                author: 'You',
-              },
-              ...lead.activities,
-            ],
-          };
-        }
-        return lead;
-      })
-    );
+  const handleMoveStage = async (leadId: string, newStage: StageId) => {
+    const targetLead = leads.find((l) => l.id === leadId);
+    if (!targetLead) return;
+
+    const stageObj = DEFAULT_STAGES.find((s) => s.id === newStage);
+    const updatedLead: Lead = {
+      ...targetLead,
+      stage: newStage,
+      activities: [
+        {
+          id: `act-${Date.now()}`,
+          type: 'stage_change' as ActivityType,
+          title: `Stage updated to ${stageObj ? stageObj.name : newStage}`,
+          timestamp: new Date().toISOString(),
+          author: 'You',
+        },
+        ...targetLead.activities,
+      ],
+    };
+
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? updatedLead : l)));
+    if (selectedLead && selectedLead.id === leadId) {
+      setSelectedLead(updatedLead);
+    }
+    await upsertLeadService(updatedLead);
   };
 
   const handleOpenAddModalForStage = (stageId: StageId) => {
@@ -203,8 +215,7 @@ export const App: React.FC = () => {
 
   const handleResetData = () => {
     if (window.confirm('Reset sample mortgage pipeline data? Any custom lead files will be lost.')) {
-      setLeads(INITIAL_LEADS);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_LEADS));
+      loadLeads();
     }
   };
 
