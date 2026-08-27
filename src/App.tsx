@@ -9,8 +9,10 @@ import { LeadDrawer } from './components/LeadDrawer';
 import { NotificationModal } from './components/NotificationModal';
 import { AddLeadModal } from './components/AddLeadModal';
 import { QuickOutreachModal } from './components/QuickOutreachModal';
+import { ScheduleReachOutModal } from './components/ScheduleReachOutModal';
+import { AppointmentNotifier } from './components/AppointmentNotifier';
 
-import type { Lead, StageId, ViewMode, FilterState, ActivityType } from './types/crm';
+import type { Lead, StageId, ViewMode, FilterState, ActivityType, Task } from './types/crm';
 import { DEFAULT_STAGES } from './data/stages';
 import { filterLeads, generateNotifications, getTodayString } from './utils/crmHelpers';
 import { Clock } from 'lucide-react';
@@ -88,6 +90,11 @@ export const App: React.FC = () => {
   const [quickOutreachLead, setQuickOutreachLead] = useState<Lead | null>(null);
   const [quickOutreachMode, setQuickOutreachMode] = useState<'call' | 'email' | 'meeting'>('call');
   const [isQuickOutreachOpen, setIsQuickOutreachOpen] = useState(false);
+
+  // Reach-Out Scheduler Modal State
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [schedulePreselectedLead, setSchedulePreselectedLead] = useState<Lead | null>(null);
+  const [scheduleDefaultDate, setScheduleDefaultDate] = useState<string | undefined>(undefined);
 
   const notifications = generateNotifications(leads);
   const todayStr = getTodayString();
@@ -213,6 +220,52 @@ export const App: React.FC = () => {
     setIsQuickOutreachOpen(true);
   };
 
+  const handleOpenScheduleModal = (lead?: Lead, date?: string) => {
+    setSchedulePreselectedLead(lead || null);
+    setScheduleDefaultDate(date);
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleScheduleReachOut = async (newTask: Task, notes: string) => {
+    const targetLead = leads.find((l) => l.id === newTask.leadId);
+    if (!targetLead) return;
+
+    const updatedLead: Lead = {
+      ...targetLead,
+      nextFollowUpDate: newTask.dueDate,
+      tasks: [newTask, ...targetLead.tasks],
+      activities: [
+        {
+          id: `act-${Date.now()}`,
+          type: newTask.type === 'meeting' ? 'meeting' : newTask.type === 'email' ? 'email' : 'call',
+          title: `Scheduled Reach-Out: ${newTask.title}`,
+          description: `Scheduled Date: ${newTask.dueDate} ${newTask.dueTime ? `@ ${newTask.dueTime}` : ''}\nNotes: ${notes}`,
+          timestamp: new Date().toISOString(),
+          author: 'You',
+        },
+        ...targetLead.activities,
+      ],
+    };
+
+    setLeads((prev) => prev.map((l) => (l.id === targetLead.id ? updatedLead : l)));
+    if (selectedLead && selectedLead.id === targetLead.id) {
+      setSelectedLead(updatedLead);
+    }
+    await upsertLeadService(updatedLead);
+  };
+
+  const handleDismissAlert = async (taskId: string) => {
+    const updatedLeads = leads.map((l) => ({
+      ...l,
+      tasks: l.tasks.map((t) => (t.id === taskId ? { ...t, reminderDismissed: true } : t)),
+    }));
+    setLeads(updatedLeads);
+    const targetLead = updatedLeads.find((l) => l.tasks.some((t) => t.id === taskId));
+    if (targetLead) {
+      await upsertLeadService(targetLead);
+    }
+  };
+
   const handleResetData = () => {
     if (window.confirm('Reset sample mortgage pipeline data? Any custom lead files will be lost.')) {
       loadLeads();
@@ -221,6 +274,14 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
+      {/* 15-Minute Pre-Notification Alert System */}
+      <AppointmentNotifier
+        leads={leads}
+        onSelectLead={setSelectedLead}
+        onStartCall={(lead) => handleQuickOutreach(lead, 'call')}
+        onDismissAlert={handleDismissAlert}
+      />
+
       {/* Top Header Navbar */}
       <Navbar
         currentView={currentView}
@@ -230,6 +291,7 @@ export const App: React.FC = () => {
         notifications={notifications}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         onOpenAddLead={() => handleOpenAddModalForStage('new_lead')}
+        onOpenScheduleModal={() => handleOpenScheduleModal()}
         onResetData={handleResetData}
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode(!darkMode)}
@@ -279,6 +341,7 @@ export const App: React.FC = () => {
             leads={leads}
             onSelectLead={setSelectedLead}
             onQuickOutreach={handleQuickOutreach}
+            onOpenScheduleModal={handleOpenScheduleModal}
           />
         )}
 
@@ -319,6 +382,7 @@ export const App: React.FC = () => {
         onUpdateLead={handleUpdateLead}
         onDeleteLead={handleDeleteLead}
         onQuickOutreach={handleQuickOutreach}
+        onOpenScheduleModal={handleOpenScheduleModal}
       />
 
       <AddLeadModal
@@ -348,6 +412,15 @@ export const App: React.FC = () => {
         mode={quickOutreachMode}
         onClose={() => setIsQuickOutreachOpen(false)}
         onLogOutreach={handleLogOutreach}
+      />
+
+      <ScheduleReachOutModal
+        isOpen={isScheduleModalOpen}
+        leads={leads}
+        preselectedLead={schedulePreselectedLead}
+        defaultDate={scheduleDefaultDate}
+        onClose={() => setIsScheduleModalOpen(false)}
+        onSchedule={handleScheduleReachOut}
       />
     </div>
   );

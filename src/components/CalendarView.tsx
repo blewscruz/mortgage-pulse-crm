@@ -18,12 +18,14 @@ interface CalendarViewProps {
     leads: Lead[];
     onSelectLead: (lead: Lead) => void;
     onQuickOutreach: (lead: Lead, mode: 'call' | 'email' | 'meeting') => void;
+    onOpenScheduleModal?: (lead?: Lead, date?: string) => void;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
     leads,
     onSelectLead,
     onQuickOutreach,
+    onOpenScheduleModal,
 }) => {
     const todayStr = getTodayString();
 
@@ -384,6 +386,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                                     <span>{evt.lead.name} • {formatCurrency(evt.lead.value)}</span>
                                                 </div>
 
+                                                {/* Reach-Out Agenda & Notes */}
+                                                {evt.task?.description && (
+                                                    <div className="mt-2 p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 text-xs text-indigo-950 dark:text-indigo-200 font-medium">
+                                                        <span className="font-extrabold text-indigo-600 dark:text-indigo-400 block text-[10px] uppercase">
+                                                            Reach-Out Agenda:
+                                                        </span>
+                                                        "{evt.task.description}"
+                                                    </div>
+                                                )}
+
                                                 {/* VA Disability Rating Banner if VA Loan */}
                                                 {evt.lead.loanType === 'VA' && (
                                                     <div className="mt-2 inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[10px] bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
@@ -435,14 +447,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
                         <button
                             onClick={() => {
-                                if (leads.length > 0) {
+                                if (onOpenScheduleModal) {
+                                    onOpenScheduleModal(undefined, selectedDayStr);
+                                } else if (leads.length > 0) {
                                     onQuickOutreach(leads[0], 'meeting');
                                 }
                             }}
                             className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-xs shadow-md flex items-center justify-center space-x-2 transition-all"
                         >
                             <Plus className="w-4 h-4" />
-                            <span>Schedule Call or Pitch Meeting</span>
+                            <span>Schedule Reach-Out & Set 15-Min Alert</span>
                         </button>
                     </div>
 

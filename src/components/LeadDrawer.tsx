@@ -33,6 +33,7 @@ interface LeadDrawerProps {
     onUpdateLead: (updatedLead: Lead) => void;
     onDeleteLead: (leadId: string) => void;
     onQuickOutreach: (lead: Lead, mode: 'call' | 'email' | 'meeting') => void;
+    onOpenScheduleModal?: (lead: Lead) => void;
 }
 
 export const LeadDrawer: React.FC<LeadDrawerProps> = ({
@@ -42,6 +43,7 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
     onUpdateLead,
     onDeleteLead,
     onQuickOutreach,
+    onOpenScheduleModal,
 }) => {
     if (!lead) return null;
 
@@ -326,11 +328,17 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                     </button>
 
                     <button
-                        onClick={() => onQuickOutreach(lead, 'meeting')}
+                        onClick={() => {
+                            if (onOpenScheduleModal) {
+                                onOpenScheduleModal(lead);
+                            } else {
+                                onQuickOutreach(lead, 'meeting');
+                            }
+                        }}
                         className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-extrabold shadow flex items-center space-x-1.5"
                     >
                         <Calendar className="w-3.5 h-3.5" />
-                        <span>Schedule Meeting</span>
+                        <span>Schedule Reach-Out</span>
                     </button>
                 </div>
 

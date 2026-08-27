@@ -58,11 +58,14 @@ export interface Task {
     leadName: string;
     company: string;
     title: string;
+    description?: string; // Notes detailing what the reach-out or appointment call is about
     dueDate: string; // ISO date string YYYY-MM-DD
-    dueTime?: string; // e.g. "10:00 AM", "02:30 PM"
+    dueTime?: string; // e.g. "14:30" or "02:30 PM"
     completed: boolean;
     type: 'call' | 'email' | 'meeting' | 'followup' | 'proposal';
     priority: Priority;
+    reminderMinutes?: number; // e.g. 15 (notify 15 mins before due time)
+    reminderDismissed?: boolean;
 }
 
 export interface Lead {

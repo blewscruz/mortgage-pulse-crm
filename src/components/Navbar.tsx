@@ -24,6 +24,7 @@ interface NavbarProps {
     notifications: NotificationItem[];
     onOpenNotifications: () => void;
     onOpenAddLead: () => void;
+    onOpenScheduleModal?: () => void;
     onResetData: () => void;
     darkMode: boolean;
     onToggleDarkMode: () => void;
@@ -40,6 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     notifications,
     onOpenNotifications,
     onOpenAddLead,
+    onOpenScheduleModal,
     onResetData,
     darkMode,
     onToggleDarkMode,
@@ -183,6 +185,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                                 </span>
                             )}
                         </button>
+
+                        {/* Schedule Reach-Out Button */}
+                        {onOpenScheduleModal && (
+                            <button
+                                onClick={onOpenScheduleModal}
+                                className="py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-extrabold flex items-center space-x-1.5 transition-all"
+                                title="Schedule borrower follow-up or pitch call"
+                            >
+                                <CalendarIcon className="w-3.5 h-3.5" />
+                                <span className="hidden md:inline">Schedule Reach-Out</span>
+                            </button>
+                        )}
 
                         {/* Add Borrower File CTA Button */}
                         <button
