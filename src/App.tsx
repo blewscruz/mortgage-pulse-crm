@@ -10,6 +10,7 @@ import { NotificationModal } from './components/NotificationModal';
 import { AddLeadModal } from './components/AddLeadModal';
 import { QuickOutreachModal } from './components/QuickOutreachModal';
 import { ScheduleReachOutModal } from './components/ScheduleReachOutModal';
+import { EditTaskModal } from './components/EditTaskModal';
 import { AppointmentNotifier } from './components/AppointmentNotifier';
 
 import type { Lead, StageId, ViewMode, FilterState, ActivityType, Task } from './types/crm';
@@ -96,6 +97,10 @@ export const App: React.FC = () => {
   const [schedulePreselectedLead, setSchedulePreselectedLead] = useState<Lead | null>(null);
   const [scheduleDefaultDate, setScheduleDefaultDate] = useState<string | undefined>(undefined);
 
+  // Edit Task Modal State
+  const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+
   const notifications = generateNotifications(leads);
   const todayStr = getTodayString();
 
@@ -145,6 +150,45 @@ export const App: React.FC = () => {
 
     setLeads((prev) => prev.map((l) => (l.id === leadId ? updatedLead : l)));
     if (selectedLead && selectedLead.id === leadId) {
+      setSelectedLead(updatedLead);
+    }
+    await upsertLeadService(updatedLead);
+  };
+
+  const handleOpenEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsEditTaskOpen(true);
+  };
+
+  const handleSaveTask = async (updatedTask: Task) => {
+    const targetLead = leads.find((l) => l.id === updatedTask.leadId);
+    if (!targetLead) return;
+
+    const updatedLead: Lead = {
+      ...targetLead,
+      tasks: targetLead.tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
+    };
+
+    setLeads((prev) => prev.map((l) => (l.id === targetLead.id ? updatedLead : l)));
+    if (selectedLead && selectedLead.id === targetLead.id) {
+      setSelectedLead(updatedLead);
+    }
+    await upsertLeadService(updatedLead);
+    setIsEditTaskOpen(false);
+    setEditingTask(null);
+  };
+
+  const handleDeleteTask = async (leadId: string, taskId: string) => {
+    const targetLead = leads.find((l) => l.id === leadId);
+    if (!targetLead) return;
+
+    const updatedLead: Lead = {
+      ...targetLead,
+      tasks: targetLead.tasks.filter((t) => t.id !== taskId),
+    };
+
+    setLeads((prev) => prev.map((l) => (l.id === targetLead.id ? updatedLead : l)));
+    if (selectedLead && selectedLead.id === targetLead.id) {
       setSelectedLead(updatedLead);
     }
     await upsertLeadService(updatedLead);
@@ -342,6 +386,8 @@ export const App: React.FC = () => {
             onSelectLead={setSelectedLead}
             onQuickOutreach={handleQuickOutreach}
             onOpenScheduleModal={handleOpenScheduleModal}
+            onEditTask={handleOpenEditTask}
+            onDeleteTask={handleDeleteTask}
           />
         )}
 
@@ -351,6 +397,8 @@ export const App: React.FC = () => {
             onToggleTaskComplete={handleToggleTaskComplete}
             onSelectLead={setSelectedLead}
             onQuickOutreach={handleQuickOutreach}
+            onEditTask={handleOpenEditTask}
+            onDeleteTask={handleDeleteTask}
           />
         )}
 
@@ -383,6 +431,8 @@ export const App: React.FC = () => {
         onDeleteLead={handleDeleteLead}
         onQuickOutreach={handleQuickOutreach}
         onOpenScheduleModal={handleOpenScheduleModal}
+        onEditTask={handleOpenEditTask}
+        onDeleteTask={handleDeleteTask}
       />
 
       <AddLeadModal
@@ -421,6 +471,17 @@ export const App: React.FC = () => {
         defaultDate={scheduleDefaultDate}
         onClose={() => setIsScheduleModalOpen(false)}
         onSchedule={handleScheduleReachOut}
+      />
+
+      <EditTaskModal
+        isOpen={isEditTaskOpen}
+        task={editingTask}
+        onClose={() => {
+          setIsEditTaskOpen(false);
+          setEditingTask(null);
+        }}
+        onSaveTask={handleSaveTask}
+        onDeleteTask={handleDeleteTask}
       />
     </div>
   );

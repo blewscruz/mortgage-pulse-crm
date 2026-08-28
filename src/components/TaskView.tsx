@@ -7,7 +7,9 @@ import {
     Mail,
     CheckCircle2,
     User,
-    CheckCircle
+    CheckCircle,
+    Edit3,
+    Trash2
 } from 'lucide-react';
 import type { Lead, Task } from '../types/crm';
 import { formatDateDisplay, getTodayString } from '../utils/crmHelpers';
@@ -17,6 +19,8 @@ interface TaskViewProps {
     onToggleTaskComplete: (leadId: string, taskId: string) => void;
     onSelectLead: (lead: Lead) => void;
     onQuickOutreach: (lead: Lead, mode: 'call' | 'email' | 'meeting') => void;
+    onEditTask?: (task: Task) => void;
+    onDeleteTask?: (leadId: string, taskId: string) => void;
 }
 
 export const TaskView: React.FC<TaskViewProps> = ({
@@ -24,6 +28,8 @@ export const TaskView: React.FC<TaskViewProps> = ({
     onToggleTaskComplete,
     onSelectLead,
     onQuickOutreach,
+    onEditTask,
+    onDeleteTask,
 }) => {
     const todayStr = getTodayString();
 
@@ -122,6 +128,30 @@ export const TaskView: React.FC<TaskViewProps> = ({
                         <Mail className="w-3 h-3" />
                         <span>Email</span>
                     </button>
+
+                    {onEditTask && (
+                        <button
+                            onClick={() => onEditTask(task)}
+                            className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-700 transition-all"
+                            title="Edit Task / Schedule"
+                        >
+                            <Edit3 className="w-4 h-4" />
+                        </button>
+                    )}
+
+                    {onDeleteTask && (
+                        <button
+                            onClick={() => {
+                                if (window.confirm(`Delete task "${task.title}"?`)) {
+                                    onDeleteTask(lead.id, task.id);
+                                }
+                            }}
+                            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 transition-all"
+                            title="Delete Task"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
             </div>
         );

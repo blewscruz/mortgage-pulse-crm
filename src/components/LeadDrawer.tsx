@@ -34,6 +34,8 @@ interface LeadDrawerProps {
     onDeleteLead: (leadId: string) => void;
     onQuickOutreach: (lead: Lead, mode: 'call' | 'email' | 'meeting') => void;
     onOpenScheduleModal?: (lead: Lead) => void;
+    onEditTask?: (task: Task) => void;
+    onDeleteTask?: (leadId: string, taskId: string) => void;
 }
 
 export const LeadDrawer: React.FC<LeadDrawerProps> = ({
@@ -44,6 +46,8 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
     onDeleteLead,
     onQuickOutreach,
     onOpenScheduleModal,
+    onEditTask,
+    onDeleteTask,
 }) => {
     if (!lead) return null;
 
@@ -1002,21 +1006,45 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                     </div>
                 )}
 
-                {/* TASKS TAB */}
+                {/* TASKS & CALENDAR REACH-OUTS TAB */}
                 {activeTab === 'tasks' && (
                     <div className="space-y-6">
-                        {/* Create Task Form */}
+                        {/* Schedule Reach-Out CTA Banner */}
+                        <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white flex items-center justify-between shadow-lg">
+                            <div>
+                                <h4 className="font-black text-sm">
+                                    Schedule Call / Meeting / Follow-up
+                                </h4>
+                                <p className="text-[11px] text-indigo-100 mt-0.5">
+                                    Set date, time, notes & 15-min alert. Syncs directly to Calendar.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (onOpenScheduleModal) {
+                                        onOpenScheduleModal(lead);
+                                    }
+                                }}
+                                className="px-3.5 py-2 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 font-black text-xs shadow flex items-center space-x-1.5 shrink-0"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>Schedule Reach-Out</span>
+                            </button>
+                        </div>
+
+                        {/* Create Quick Task Form */}
                         <form onSubmit={handleCreateTask} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
                             <h4 className="font-extrabold text-xs text-slate-900 dark:text-slate-100">
-                                Add Follow-Up Task for {lead.name}
+                                Quick Add Task for {lead.name}
                             </h4>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
-                                    placeholder="Task description (e.g. Call borrower about W2s)..."
+                                    placeholder="Task title or call topic..."
                                     value={newTaskTitle}
                                     onChange={(e) => setNewTaskTitle(e.target.value)}
-                                    className="flex-1 p-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100"
+                                    className="flex-1 p-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 font-medium"
                                 />
                                 <input
                                     type="date"
@@ -1029,53 +1057,110 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                                     className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow flex items-center space-x-1 shrink-0"
                                 >
                                     <Plus className="w-4 h-4" />
-                                    <span>Add Task</span>
+                                    <span>Add</span>
                                 </button>
                             </div>
                         </form>
 
-                        {/* Task List */}
-                        <div className="space-y-2">
-                            <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-400">
-                                Active & Completed Tasks ({lead.tasks.length})
-                            </h4>
+                        {/* Scheduled Events & Task List */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-400">
+                                    Calendar Events & Tasks ({lead.tasks.length})
+                                </h4>
+                                <span className="text-[11px] text-slate-500 font-semibold">
+                                    {lead.tasks.filter(t => !t.completed).length} Pending
+                                </span>
+                            </div>
 
                             {lead.tasks.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic py-4 text-center">No tasks assigned yet.</p>
+                                <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                                    <Calendar className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                                    <p className="text-xs text-slate-500 font-bold">No tasks or calls scheduled for this borrower.</p>
+                                    <button
+                                        onClick={() => onOpenScheduleModal && onOpenScheduleModal(lead)}
+                                        className="mt-3 text-xs text-indigo-600 dark:text-indigo-400 font-black hover:underline"
+                                    >
+                                        + Schedule First Reach-Out
+                                    </button>
+                                </div>
                             ) : (
                                 lead.tasks.map((task) => (
                                     <div
                                         key={task.id}
-                                        className={`p-3.5 rounded-xl border flex items-center justify-between ${task.completed
+                                        className={`p-4 rounded-2xl border transition-all ${task.completed
                                             ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-60'
-                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm'
                                             }`}
                                     >
-                                        <div className="flex items-center space-x-3">
-                                            <input
-                                                type="checkbox"
-                                                checked={task.completed}
-                                                onChange={() => {
-                                                    const updatedTasks = lead.tasks.map((t) =>
-                                                        t.id === task.id ? { ...t, completed: !t.completed } : t
-                                                    );
-                                                    onUpdateLead({ ...lead, tasks: updatedTasks });
-                                                }}
-                                                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                                            />
-                                            <div>
-                                                <p className={`text-xs font-extrabold ${task.completed ? 'line-through text-slate-400' : 'text-slate-900 dark:text-slate-100'}`}>
-                                                    {task.title}
-                                                </p>
-                                                <span className="text-[10px] text-slate-400 font-bold">
-                                                    Due: {formatDateDisplay(task.dueDate)}
-                                                </span>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-start space-x-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={task.completed}
+                                                    onChange={() => {
+                                                        const updatedTasks = lead.tasks.map((t) =>
+                                                            t.id === task.id ? { ...t, completed: !t.completed } : t
+                                                        );
+                                                        onUpdateLead({ ...lead, tasks: updatedTasks });
+                                                    }}
+                                                    className="w-4 h-4 mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                                                />
+                                                <div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${task.type === 'call' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' :
+                                                                task.type === 'meeting' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' :
+                                                                    task.type === 'proposal' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' :
+                                                                        'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300'
+                                                            }`}>
+                                                            {task.type === 'call' ? '📞 Call' : task.type === 'meeting' ? '🎥 Meeting' : task.type === 'proposal' ? '✍️ Disclosures' : '📋 Task'}
+                                                        </span>
+
+                                                        <span className="text-[10px] text-slate-400 font-extrabold flex items-center">
+                                                            <Calendar className="w-3 h-3 mr-1 text-slate-400" />
+                                                            {formatDateDisplay(task.dueDate)} {task.dueTime && `@ ${task.dueTime}`}
+                                                        </span>
+                                                    </div>
+
+                                                    <p className={`text-xs font-black mt-1 ${task.completed ? 'line-through text-slate-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                                                        {task.title}
+                                                    </p>
+
+                                                    {task.description && (
+                                                        <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                            "{task.description}"
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons for Task */}
+                                            <div className="flex items-center space-x-1 shrink-0">
+                                                {onEditTask && (
+                                                    <button
+                                                        onClick={() => onEditTask(task)}
+                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-700"
+                                                        title="Edit Task / Change Date & Time"
+                                                    >
+                                                        <Edit3 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+
+                                                {onDeleteTask && (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm(`Delete task "${task.title}"?`)) {
+                                                                onDeleteTask(lead.id, task.id);
+                                                            }
+                                                        }}
+                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700"
+                                                        title="Delete Task"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
-
-                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${task.completed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                                            {task.completed ? 'Done ✓' : 'Pending'}
-                                        </span>
                                     </div>
                                 ))
                             )}

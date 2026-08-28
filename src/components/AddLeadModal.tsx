@@ -96,19 +96,7 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
                     author: 'You',
                 },
             ],
-            tasks: [
-                {
-                    id: `task-${Date.now()}`,
-                    leadId: `lead-${Date.now()}`,
-                    leadName: name,
-                    company: company || 'Borrower',
-                    title: loanType === 'VA' ? 'Retrieve VA Certificate of Eligibility (COE) & Form 1003' : 'Initial Loan Discovery & Application Review',
-                    dueDate: getTodayString(),
-                    completed: false,
-                    type: 'call',
-                    priority: 'high',
-                },
-            ],
+            tasks: [],
         };
 
         onAddLead(newLead);

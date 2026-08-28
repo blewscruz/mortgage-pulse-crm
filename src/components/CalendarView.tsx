@@ -9,7 +9,9 @@ import {
     User,
     Plus,
     Shield,
-    Video
+    Video,
+    Edit3,
+    Trash2
 } from 'lucide-react';
 import type { Lead, Task } from '../types/crm';
 import { formatDateDisplay, formatCurrency, getTodayString, getVADisabilityInfo } from '../utils/crmHelpers';
@@ -19,6 +21,8 @@ interface CalendarViewProps {
     onSelectLead: (lead: Lead) => void;
     onQuickOutreach: (lead: Lead, mode: 'call' | 'email' | 'meeting') => void;
     onOpenScheduleModal?: (lead?: Lead, date?: string) => void;
+    onEditTask?: (task: Task) => void;
+    onDeleteTask?: (leadId: string, taskId: string) => void;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
@@ -26,6 +30,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     onSelectLead,
     onQuickOutreach,
     onOpenScheduleModal,
+    onEditTask,
+    onDeleteTask,
 }) => {
     const todayStr = getTodayString();
 
@@ -88,20 +94,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 isOverdue: !task.completed && task.dueDate < todayStr,
             });
         });
-
-        // Next follow up dates mapped if no explicit task exists for that date
-        if (lead.nextFollowUpDate && !lead.tasks.some((t) => t.dueDate === lead.nextFollowUpDate)) {
-            events.push({
-                id: `evt-followup-${lead.id}`,
-                lead,
-                title: `Scheduled Follow-up with ${lead.name}`,
-                date: lead.nextFollowUpDate,
-                timeDisplay: '11:00 AM',
-                type: 'call',
-                completed: false,
-                isOverdue: lead.nextFollowUpDate < todayStr,
-            });
-        }
     });
 
     // Events grouped by date string (YYYY-MM-DD)
@@ -281,17 +273,29 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                         {dayEvents.slice(0, 2).map((evt) => (
                                             <div
                                                 key={evt.id}
-                                                className={`px-1.5 py-0.5 rounded-md border text-[9px] font-extrabold truncate flex items-center space-x-1 ${getEventBadgeStyle(
+                                                onClick={(e) => {
+                                                    if (evt.task && onEditTask) {
+                                                        e.stopPropagation();
+                                                        onEditTask(evt.task);
+                                                    }
+                                                }}
+                                                title={evt.task ? "Click to Edit Task / Call details" : evt.title}
+                                                className={`px-1.5 py-0.5 rounded-md border text-[9px] font-extrabold truncate flex items-center justify-between group/badge hover:scale-105 transition-transform ${getEventBadgeStyle(
                                                     evt.type,
                                                     evt.isOverdue
                                                 )}`}
                                             >
-                                                {evt.type === 'call' ? (
-                                                    <Phone className="w-2.5 h-2.5 shrink-0" />
-                                                ) : (
-                                                    <Video className="w-2.5 h-2.5 shrink-0" />
+                                                <div className="flex items-center space-x-1 truncate">
+                                                    {evt.type === 'call' ? (
+                                                        <Phone className="w-2.5 h-2.5 shrink-0" />
+                                                    ) : (
+                                                        <Video className="w-2.5 h-2.5 shrink-0" />
+                                                    )}
+                                                    <span className="truncate">{evt.lead.name.split(' ')[0]}</span>
+                                                </div>
+                                                {evt.task && onEditTask && (
+                                                    <Edit3 className="w-2 h-2 opacity-0 group-hover/badge:opacity-100 text-indigo-600 dark:text-indigo-300 ml-0.5 shrink-0" />
                                                 )}
-                                                <span className="truncate">{evt.lead.name.split(' ')[0]}</span>
                                             </div>
                                         ))}
                                         {dayEvents.length > 2 && (
@@ -351,25 +355,68 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                         <div
                                             key={evt.id}
                                             className={`p-4 rounded-2xl border transition-all space-y-3 ${evt.isOverdue
-                                                ? 'bg-red-50/60 dark:bg-red-950/30 border-red-200 dark:border-red-800/60'
-                                                : 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-700/80 hover:border-indigo-400'
+                                                ? 'bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40'
+                                                : 'bg-slate-50/70 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/80 hover:border-indigo-300'
                                                 }`}
                                         >
-                                            {/* Top Time & Type Badge */}
+                                            {/* Top Time & Type Badge with Quick Action Edit & Delete Buttons */}
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center space-x-1.5 text-xs font-black text-slate-800 dark:text-slate-200">
                                                     <Clock className="w-3.5 h-3.5 text-indigo-500" />
                                                     <span>{evt.timeDisplay}</span>
                                                 </div>
 
-                                                <span
-                                                    className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md border ${getEventBadgeStyle(
-                                                        evt.type,
-                                                        evt.isOverdue
-                                                    )}`}
-                                                >
-                                                    {evt.type.toUpperCase()}
-                                                </span>
+                                                <div className="flex items-center space-x-1.5">
+                                                    <span
+                                                        className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md border ${getEventBadgeStyle(
+                                                            evt.type,
+                                                            evt.isOverdue
+                                                        )}`}
+                                                    >
+                                                        {evt.type.toUpperCase()}
+                                                    </span>
+
+                                                    {onEditTask && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const taskToEdit: Task = evt.task || {
+                                                                    id: evt.id.replace('evt-task-', ''),
+                                                                    leadId: evt.lead.id,
+                                                                    leadName: evt.lead.name,
+                                                                    company: evt.lead.company,
+                                                                    title: evt.title,
+                                                                    dueDate: evt.date,
+                                                                    dueTime: evt.timeDisplay,
+                                                                    completed: evt.completed,
+                                                                    type: evt.type,
+                                                                    priority: 'medium'
+                                                                };
+                                                                onEditTask(taskToEdit);
+                                                            }}
+                                                            className="p-1 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white dark:bg-slate-800 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white border border-indigo-200 dark:border-slate-700 transition-colors shadow-sm"
+                                                            title="Edit Task / Schedule"
+                                                        >
+                                                            <Edit3 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+
+                                                    {onDeleteTask && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (window.confirm(`Delete calendar item "${evt.title}"?`)) {
+                                                                    const taskId = evt.task?.id || evt.id.replace('evt-task-', '');
+                                                                    onDeleteTask(evt.lead.id, taskId);
+                                                                }
+                                                            }}
+                                                            className="p-1 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white border border-rose-200 dark:border-slate-700 transition-colors shadow-sm"
+                                                            title="Delete Task / Schedule"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {/* Borrower Info & VA Loan Badge */}
@@ -408,8 +455,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                                 )}
                                             </div>
 
-                                            {/* Quick Actions */}
-                                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                                            {/* Quick Actions & Edit / Delete */}
+                                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-2">
                                                 <button
                                                     onClick={() => onSelectLead(evt.lead)}
                                                     className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 hover:underline"
@@ -418,6 +465,32 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                                 </button>
 
                                                 <div className="flex items-center space-x-1.5">
+                                                    {evt.task && onEditTask && (
+                                                        <button
+                                                            onClick={() => onEditTask(evt.task!)}
+                                                            className="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-200 dark:border-indigo-800/80 shadow-sm text-xs font-bold flex items-center space-x-1 transition-all"
+                                                            title="Edit Event Date / Time / Notes"
+                                                        >
+                                                            <Edit3 className="w-3.5 h-3.5" />
+                                                            <span>Edit</span>
+                                                        </button>
+                                                    )}
+
+                                                    {evt.task && onDeleteTask && (
+                                                        <button
+                                                            onClick={() => {
+                                                                if (window.confirm(`Delete calendar item "${evt.title}"?`)) {
+                                                                    onDeleteTask(evt.lead.id, evt.task!.id);
+                                                                }
+                                                            }}
+                                                            className="px-2.5 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 hover:bg-rose-600 hover:text-white border border-rose-200 dark:border-rose-800/80 shadow-sm text-xs font-bold flex items-center space-x-1 transition-all"
+                                                            title="Delete Event"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                            <span>Delete</span>
+                                                        </button>
+                                                    )}
+
                                                     <button
                                                         onClick={() => onQuickOutreach(evt.lead, 'call')}
                                                         className="p-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm"
