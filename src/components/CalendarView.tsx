@@ -13,7 +13,7 @@ import {
     Edit3,
     Trash2
 } from 'lucide-react';
-import type { Lead, Task } from '../types/crm';
+import type { Lead, Task, Priority } from '../types/crm';
 import { formatDateDisplay, formatCurrency, getTodayString, getVADisabilityInfo } from '../utils/crmHelpers';
 
 interface CalendarViewProps {
@@ -96,6 +96,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         });
     });
 
+    // Helper to parse time string ("08:20", "14:30", "10:00 AM") to minutes from midnight
+    const parseTimeToMinutes = (timeStr?: string): number => {
+        if (!timeStr) return 0;
+        const trimmed = timeStr.trim().toUpperCase();
+        const isPM = trimmed.includes('PM');
+        const isAM = trimmed.includes('AM');
+        const cleanTime = trimmed.replace(/(AM|PM)/g, '').trim();
+        const parts = cleanTime.split(':');
+        let hours = parseInt(parts[0], 10) || 0;
+        const minutes = parseInt(parts[1], 10) || 0;
+
+        if (isPM && hours < 12) hours += 12;
+        if (isAM && hours === 12) hours = 0;
+
+        return hours * 60 + minutes;
+    };
+
     // Events grouped by date string (YYYY-MM-DD)
     const eventsByDate: Record<string, CalendarEvent[]> = {};
     events.forEach((evt) => {
@@ -103,6 +120,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             eventsByDate[evt.date] = [];
         }
         eventsByDate[evt.date].push(evt);
+    });
+
+    // Sort events chronologically by time (earliest/nearest task at top)
+    Object.keys(eventsByDate).forEach((dateKey) => {
+        eventsByDate[dateKey].sort((a, b) => {
+            const timeA = parseTimeToMinutes(a.timeDisplay);
+            const timeB = parseTimeToMinutes(b.timeDisplay);
+            return timeA - timeB;
+        });
     });
 
     const selectedDayEvents = eventsByDate[selectedDayStr] || [];
@@ -367,6 +393,42 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                                 </div>
 
                                                 <div className="flex items-center space-x-1.5">
+                                                    {/* Priority Badge with 1-click toggle */}
+                                                    {evt.task && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (onEditTask) {
+                                                                    const priorityCycle: Record<string, Priority> = {
+                                                                        high: 'medium',
+                                                                        medium: 'low',
+                                                                        low: 'high'
+                                                                    };
+                                                                    const updated: Task = {
+                                                                        ...evt.task!,
+                                                                        priority: priorityCycle[evt.task!.priority || 'medium'] || 'high'
+                                                                    };
+                                                                    onEditTask(updated);
+                                                                }
+                                                            }}
+                                                            title={`Priority: ${(evt.task.priority || 'medium').toUpperCase()} (Click to toggle priority)`}
+                                                            className={`px-1.5 py-0.5 text-[10px] font-extrabold rounded-md border flex items-center space-x-1 cursor-pointer transition-all hover:scale-105 shadow-xs ${evt.task.priority === 'high'
+                                                                ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                                                                : evt.task.priority === 'low'
+                                                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                                                                    : 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                                                                }`}
+                                                        >
+                                                            <span>
+                                                                {evt.task.priority === 'high'
+                                                                    ? '🔴 High'
+                                                                    : evt.task.priority === 'low'
+                                                                        ? '🟢 Low'
+                                                                        : '🟡 Med'}
+                                                            </span>
+                                                        </button>
+                                                    )}
+
                                                     <span
                                                         className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md border ${getEventBadgeStyle(
                                                             evt.type,

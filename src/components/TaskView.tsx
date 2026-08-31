@@ -33,6 +33,31 @@ export const TaskView: React.FC<TaskViewProps> = ({
 }) => {
     const todayStr = getTodayString();
 
+    const parseTimeToMinutes = (timeStr?: string): number => {
+        if (!timeStr) return 0;
+        const trimmed = timeStr.trim().toUpperCase();
+        const isPM = trimmed.includes('PM');
+        const isAM = trimmed.includes('AM');
+        const cleanTime = trimmed.replace(/(AM|PM)/g, '').trim();
+        const parts = cleanTime.split(':');
+        let hours = parseInt(parts[0], 10) || 0;
+        const minutes = parseInt(parts[1], 10) || 0;
+
+        if (isPM && hours < 12) hours += 12;
+        if (isAM && hours === 12) hours = 0;
+
+        return hours * 60 + minutes;
+    };
+
+    const sortTasksChronologically = (items: { task: Task; lead: Lead }[]) => {
+        return items.sort((a, b) => {
+            if (a.task.dueDate !== b.task.dueDate) {
+                return a.task.dueDate.localeCompare(b.task.dueDate);
+            }
+            return parseTimeToMinutes(a.task.dueTime) - parseTimeToMinutes(b.task.dueTime);
+        });
+    };
+
     const allTasksWithLeads: { task: Task; lead: Lead }[] = [];
     leads.forEach((lead) => {
         lead.tasks.forEach((task) => {
@@ -40,19 +65,21 @@ export const TaskView: React.FC<TaskViewProps> = ({
         });
     });
 
-    const overdueItems = allTasksWithLeads.filter(
-        (item) => !item.task.completed && item.task.dueDate < todayStr
+    const overdueItems = sortTasksChronologically(
+        allTasksWithLeads.filter((item) => !item.task.completed && item.task.dueDate < todayStr)
     );
 
-    const dueTodayItems = allTasksWithLeads.filter(
-        (item) => !item.task.completed && item.task.dueDate === todayStr
+    const dueTodayItems = sortTasksChronologically(
+        allTasksWithLeads.filter((item) => !item.task.completed && item.task.dueDate === todayStr)
     );
 
-    const upcomingItems = allTasksWithLeads.filter(
-        (item) => !item.task.completed && item.task.dueDate > todayStr
+    const upcomingItems = sortTasksChronologically(
+        allTasksWithLeads.filter((item) => !item.task.completed && item.task.dueDate > todayStr)
     );
 
-    const completedItems = allTasksWithLeads.filter((item) => item.task.completed);
+    const completedItems = sortTasksChronologically(
+        allTasksWithLeads.filter((item) => item.task.completed)
+    );
 
     const renderTaskRow = (item: { task: Task; lead: Lead }, isOverdue = false) => {
         const { task, lead } = item;
