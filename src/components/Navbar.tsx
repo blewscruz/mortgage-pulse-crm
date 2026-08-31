@@ -63,12 +63,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </div>
                         <div>
                             <div className="flex items-center space-x-2">
-                                <h1 className="font-black text-lg tracking-tight bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-white dark:via-indigo-200 dark:to-white bg-clip-text text-transparent">
-                                    BECruz Capital
+                                <h1 className="font-black text-lg tracking-tight bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-white dark:via-indigo-200 dark:to-white bg-clip-text text-transparent whitespace-nowrap">
+                                    BE Cruz Capital
                                 </h1>
-                                <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800/60">
-                                    Capital & Mortgage CRM
-                                </span>
                             </div>
                             <p className="text-[11px] text-slate-400 hidden sm:block">
                                 Loan Pipeline: <strong className="text-emerald-600 dark:text-emerald-400 font-black">{formatCurrency(totalPipelineValue)}</strong>
