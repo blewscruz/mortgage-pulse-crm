@@ -89,6 +89,7 @@ export interface Lead {
     tags: string[];
     avatar?: string;
     createdAt: string; // ISO date string
+    fundedDate?: string; // ISO date string or YYYY-MM-DD when loan funded
     lastContactedAt?: string; // ISO date string
     nextFollowUpDate?: string; // ISO date YYYY-MM-DD
     notes: string;

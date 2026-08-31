@@ -234,6 +234,7 @@ export const App: React.FC = () => {
     const updatedLead: Lead = {
       ...targetLead,
       stage: newStage,
+      fundedDate: newStage === 'funded_closed' ? (targetLead.fundedDate || new Date().toISOString()) : targetLead.fundedDate,
       activities: [
         {
           id: `act-${Date.now()}`,
