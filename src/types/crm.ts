@@ -96,7 +96,9 @@ export interface Lead {
     activities: Activity[];
     tasks: Task[];
     owner: string;
-    source: string; // e.g. "Zillow Referral", "Realtor Partner", "Website"
+    source: string; // e.g. "Self-Generated", "Company Lead", "Realtor Partner"
+    isSelfGenerated?: boolean; // true = 70% LO commission rate, false = tier rate (10%-30%) based on funded count
+    sectionAAmount?: number; // Custom Section A closing costs ($), or auto-calculated from loan value
     hasCoBorrower?: boolean;
     coBorrowerName?: string;
     coBorrowerEmail?: string;

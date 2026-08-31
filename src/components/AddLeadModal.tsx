@@ -32,6 +32,8 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
     const [referralPartner, setReferralPartner] = useState('');
     const [stage, setStage] = useState<StageId>(defaultStage);
     const [priority, setPriority] = useState<Priority>('high');
+    const [isSelfGenerated, setIsSelfGenerated] = useState<boolean>(true);
+    const [sectionAAmount, setSectionAAmount] = useState<string>('');
     const [notes, setNotes] = useState('');
 
     // Spouse / Co-Borrower State
@@ -85,13 +87,17 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
             nextFollowUpDate: getTodayString(),
             notes,
             owner: 'You',
-            source: referralPartner ? `Partner: ${referralPartner}` : 'Direct Lead',
+            isSelfGenerated,
+            sectionAAmount: sectionAAmount ? Number(sectionAAmount) : undefined,
+            source: isSelfGenerated
+                ? (referralPartner ? `Self-Generated (${referralPartner})` : 'Self-Generated')
+                : (referralPartner ? `Company Provided (${referralPartner})` : 'Company Lead'),
             activities: [
                 {
                     id: `act-${Date.now()}`,
                     type: 'note',
                     title: 'Borrower Lead Created',
-                    description: `Created loan file for ${name}${hasCoBorrower && coBorrowerName ? ` & ${coBorrowerName}` : ''} (${loanType} - $${loanAmount.toLocaleString()}).`,
+                    description: `Created loan file for ${name}${hasCoBorrower && coBorrowerName ? ` & ${coBorrowerName}` : ''} (${loanType} - $${loanAmount.toLocaleString()}). Origin: ${isSelfGenerated ? 'Self-Generated (70% Comm)' : 'Company Provided Tier'}.`,
                     timestamp: new Date().toISOString(),
                     author: 'You',
                 },
@@ -347,6 +353,61 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({
                             </div>
                         </div>
                     )}
+
+                    {/* Lead Origin & Commission Structure */}
+                    <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <label className="block text-xs font-black text-amber-900 dark:text-amber-200">
+                                    💰 Commission & Lead Origin
+                                </label>
+                                <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                                    Self-Generated leads pay <strong>70% of Section A</strong>. Company leads pay <strong>10%-30% based on monthly volume</strong>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="flex items-center space-x-2">
+                                <label className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="leadOrigin"
+                                        checked={isSelfGenerated}
+                                        onChange={() => setIsSelfGenerated(true)}
+                                        className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                                    />
+                                    <span>⭐ Self-Generated (70%)</span>
+                                </label>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <label className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="leadOrigin"
+                                        checked={!isSelfGenerated}
+                                        onChange={() => setIsSelfGenerated(false)}
+                                        className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span>🏢 Company Provided (Tier)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-amber-200/60 dark:border-amber-800/40">
+                            <label className="block text-[11px] font-bold text-amber-900 dark:text-amber-200 mb-1">
+                                Custom Section A Closing Costs Fee ($) <span className="font-normal text-slate-500">(Optional - auto-calculates if blank)</span>
+                            </label>
+                            <input
+                                type="number"
+                                placeholder="e.g. 6750 (Leave blank for default 1.50%)"
+                                value={sectionAAmount}
+                                onChange={(e) => setSectionAAmount(e.target.value)}
+                                className="w-full p-2 text-xs bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-xl text-slate-900 dark:text-slate-100"
+                            />
+                        </div>
+                    </div>
 
                     {/* Property Address & Realtor Partner */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -78,6 +78,14 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
     const [editCoBorrowerEmail, setEditCoBorrowerEmail] = useState(lead.coBorrowerEmail || '');
     const [editCoBorrowerEmployer, setEditCoBorrowerEmployer] = useState(lead.coBorrowerEmployer || '');
 
+    // Commission / Lead Origin State
+    const [editIsSelfGenerated, setEditIsSelfGenerated] = useState<boolean>(
+        lead.isSelfGenerated ?? (lead.source?.toLowerCase().includes('self') || false)
+    );
+    const [editSectionAAmount, setEditSectionAAmount] = useState<string>(
+        lead.sectionAAmount ? String(lead.sectionAAmount) : ''
+    );
+
     useEffect(() => {
         setEditName(lead.name);
         setEditEmail(lead.email);
@@ -95,6 +103,8 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
         setEditCoBorrowerPhone(lead.coBorrowerPhone || '');
         setEditCoBorrowerEmail(lead.coBorrowerEmail || '');
         setEditCoBorrowerEmployer(lead.coBorrowerEmployer || '');
+        setEditIsSelfGenerated(lead.isSelfGenerated ?? (lead.source?.toLowerCase().includes('self') || false));
+        setEditSectionAAmount(lead.sectionAAmount ? String(lead.sectionAAmount) : '');
         setIsEditing(false);
     }, [lead.id]);
 
@@ -109,7 +119,7 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
             id: `act-${Date.now()}`,
             type: 'note',
             title: 'Updated Borrower & Loan File Information',
-            description: `Updated loan amount to ${formatCurrency(Number(editValue))}${editHasCoBorrower ? ` with co-borrower (${editCoBorrowerName || 'Spouse'})` : ''}.`,
+            description: `Updated loan amount to ${formatCurrency(Number(editValue))}. Commission origin: ${editIsSelfGenerated ? 'Self-Generated (70%)' : 'Company Provided Tier'}.`,
             timestamp: new Date().toISOString(),
             author: 'You',
         };
@@ -132,6 +142,8 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
             coBorrowerPhone: editHasCoBorrower ? editCoBorrowerPhone : undefined,
             coBorrowerEmail: editHasCoBorrower ? editCoBorrowerEmail : undefined,
             coBorrowerEmployer: editHasCoBorrower ? editCoBorrowerEmployer : undefined,
+            isSelfGenerated: editIsSelfGenerated,
+            sectionAAmount: editSectionAAmount ? Number(editSectionAAmount) : undefined,
             activities: [newActivity, ...lead.activities],
         });
 
@@ -526,6 +538,49 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                                     </select>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Commission Origin & Section A Fee */}
+                        <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 space-y-2.5">
+                            <label className="block text-xs font-black text-amber-900 dark:text-amber-200">
+                                💰 Commission Structure & Lead Origin
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                <label className="flex items-center space-x-2 font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="editLeadOrigin"
+                                        checked={editIsSelfGenerated}
+                                        onChange={() => setEditIsSelfGenerated(true)}
+                                        className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                                    />
+                                    <span>⭐ Self-Generated (70% Sec A)</span>
+                                </label>
+
+                                <label className="flex items-center space-x-2 font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="editLeadOrigin"
+                                        checked={!editIsSelfGenerated}
+                                        onChange={() => setEditIsSelfGenerated(false)}
+                                        className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span>🏢 Company Provided Tier</span>
+                                </label>
+                            </div>
+
+                            <div className="pt-2 border-t border-amber-200/60 dark:border-amber-800/40 flex items-center justify-between gap-2">
+                                <label className="text-[11px] font-bold text-amber-900 dark:text-amber-200 shrink-0">
+                                    Custom Section A Fee ($):
+                                </label>
+                                <input
+                                    type="number"
+                                    placeholder="Default 1.50%"
+                                    value={editSectionAAmount}
+                                    onChange={(e) => setEditSectionAAmount(e.target.value)}
+                                    className="p-1.5 text-xs bg-white dark:bg-slate-700 border border-amber-300 dark:border-amber-700 rounded-xl text-slate-900 dark:text-slate-100 font-bold w-36"
+                                />
+                            </div>
                         </div>
 
                         {/* Primary Borrower Info */}

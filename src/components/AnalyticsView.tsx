@@ -9,7 +9,9 @@ import {
     ShieldCheck,
     Calendar,
     Coins,
-    CheckCircle2
+    CheckCircle2,
+    Zap,
+    Sparkles
 } from 'lucide-react';
 import type { Lead, Stage } from '../types/crm';
 import { formatCurrency } from '../utils/crmHelpers';
@@ -19,9 +21,59 @@ interface AnalyticsViewProps {
     stages: Stage[];
 }
 
+/**
+ * Company Lead Tier Rate Rule:
+ * - 1-5 loans: 10%
+ * - 6-11 loans: 15%
+ * - 12-20 loans: 20%
+ * - 21+ loans: 30%
+ * - Self-Generated: 70%
+ */
+export function getCompanyLeadTierRate(fundedCount: number): {
+    rate: number;
+    ratePercent: string;
+    label: string;
+    nextTierLabel: string;
+    remainingForNextTier: number;
+} {
+    if (fundedCount >= 21) {
+        return {
+            rate: 0.30,
+            ratePercent: '30%',
+            label: '30% Tier (21+ Loans)',
+            nextTierLabel: 'Max Tier Unlocked!',
+            remainingForNextTier: 0,
+        };
+    } else if (fundedCount >= 12) {
+        return {
+            rate: 0.20,
+            ratePercent: '20%',
+            label: '20% Tier (12-20 Loans)',
+            nextTierLabel: '30% Tier (21+ Loans)',
+            remainingForNextTier: 21 - fundedCount,
+        };
+    } else if (fundedCount >= 6) {
+        return {
+            rate: 0.15,
+            ratePercent: '15%',
+            label: '15% Tier (6-11 Loans)',
+            nextTierLabel: '20% Tier (12-20 Loans)',
+            remainingForNextTier: 12 - fundedCount,
+        };
+    } else {
+        return {
+            rate: 0.10,
+            ratePercent: '10%',
+            label: '10% Tier (1-5 Loans)',
+            nextTierLabel: '15% Tier (6-11 Loans)',
+            remainingForNextTier: Math.max(1, 6 - fundedCount),
+        };
+    }
+}
+
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) => {
-    // 150 BPS = 1.50% default LO Commission Rate
-    const [commissionBps, setCommissionBps] = useState<number>(150);
+    // Default Section A % of Loan Amount (e.g. 1.50%)
+    const [sectionAPercent, setSectionAPercent] = useState<number>(1.50);
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
 
     // Helper: Extract YYYY-MM and formatted Month Name from ISO date string
@@ -105,6 +157,23 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) =
         return { availableMonths: sortedMonths, monthlyDataMap: map };
     }, [leads]);
 
+    // Helper: Compute deal commission based on Section A and Lead Origin
+    const computeLeadCommission = (lead: Lead, monthlyFundedCount: number) => {
+        const sectionA = lead.sectionAAmount ?? Math.round(lead.value * (sectionAPercent / 100));
+        const isSelfGen = lead.isSelfGenerated ?? (lead.source?.toLowerCase().includes('self') || false);
+        const tier = getCompanyLeadTierRate(monthlyFundedCount);
+        const rate = isSelfGen ? 0.70 : tier.rate;
+        const commission = Math.round(sectionA * rate);
+
+        return {
+            sectionA,
+            isSelfGen,
+            rate,
+            rateLabel: isSelfGen ? '70% (Self-Gen)' : `${tier.ratePercent} (Company)`,
+            commission,
+        };
+    };
+
     // Filter leads based on selected month
     const filteredLeads = useMemo(() => {
         if (selectedMonth === 'all') return leads;
@@ -130,11 +199,40 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) =
     const inProcessLeads = filteredLeads.filter((l) => l.stage !== 'funded_closed' && l.stage !== 'lost');
     const inProcessValue = inProcessLeads.reduce((sum, l) => sum + l.value, 0);
 
-    const underwritingLeads = filteredLeads.filter((l) => l.stage === 'underwriting_clear_to_close');
-    const underwritingValue = underwritingLeads.reduce((sum, l) => sum + l.value, 0);
-
     const avgLoanSize = totalLeads > 0 ? Math.round(totalPipeline / totalLeads) : 0;
-    const estimatedCommission = Math.round(fundedValue * (commissionBps / 10000));
+
+    // Monthly Tier Info for selected month
+    const currentMonthKey = getMonthKeyAndLabel().key;
+    const targetMonthKey = selectedMonth === 'all' ? currentMonthKey : selectedMonth;
+    const targetMonthFundedCount = (monthlyDataMap[targetMonthKey]?.fundedLeads || []).length;
+    const activeTierInfo = getCompanyLeadTierRate(targetMonthFundedCount);
+
+    // Calculate total commissions & Section A totals for filtered selection
+    const { totalCommission, totalSectionA, selfGenCount, companyLeadCount } = useMemo(() => {
+        let commSum = 0;
+        let secASum = 0;
+        let selfGenC = 0;
+        let compC = 0;
+
+        fundedLeads.forEach((l) => {
+            const dateToUse = l.fundedDate || l.lastContactedAt || l.createdAt;
+            const { key } = getMonthKeyAndLabel(dateToUse);
+            const mFundedCount = (monthlyDataMap[key]?.fundedLeads || []).length;
+
+            const info = computeLeadCommission(l, mFundedCount);
+            commSum += info.commission;
+            secASum += info.sectionA;
+            if (info.isSelfGen) selfGenC++;
+            else compC++;
+        });
+
+        return {
+            totalCommission: commSum,
+            totalSectionA: secASum,
+            selfGenCount: selfGenC,
+            companyLeadCount: compC,
+        };
+    }, [fundedLeads, monthlyDataMap, sectionAPercent]);
 
     const discosPending = filteredLeads.filter((l) => l.disclosuresStatus === 'Sent for E-Sign').length;
 
@@ -147,24 +245,27 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) =
     return (
         <div className="space-y-6 max-w-6xl mx-auto pb-10">
 
-            {/* Header Control Bar: Month Selector & Commission Rate Calculator */}
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            {/* Header Control Bar: Month Selector & Section A Configurator */}
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
                         <Calendar className="w-5 h-5" />
                     </div>
                     <div>
-                        <h2 className="text-base font-black text-slate-900 dark:text-slate-100">
-                            Monthly Volume Analytics
+                        <h2 className="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <span>Monthly Volume & Tiered Commission Analytics</span>
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                                Section A Rules
+                            </span>
                         </h2>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Track closed funded loan volume & active in-process pipeline month over month.
+                            Commission calculated on Section A closing costs: <strong>70% Self-Generated</strong> | <strong>10%-30% Company Lead Tiers</strong>.
                         </p>
                     </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Month Selector */}
+                    {/* Period Selector */}
                     <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
                         <Calendar className="w-4 h-4 text-slate-400" />
                         <span className="text-xs font-bold text-slate-500">Period:</span>
@@ -182,52 +283,148 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) =
                         </select>
                     </div>
 
-                    {/* LO Commission Rate Bps Calculator */}
-                    <div className="flex items-center space-x-2 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-2xl border border-emerald-200 dark:border-emerald-800">
-                        <Coins className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">LO Rate:</span>
+                    {/* Section A % Rate Configurator */}
+                    <div className="flex items-center space-x-2 bg-indigo-50 dark:bg-indigo-950/40 px-3 py-1.5 rounded-2xl border border-indigo-200 dark:border-indigo-800">
+                        <Coins className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">Section A Fee %:</span>
                         <select
-                            value={commissionBps}
-                            onChange={(e) => setCommissionBps(Number(e.target.value))}
-                            className="bg-transparent text-xs font-black text-emerald-700 dark:text-emerald-300 focus:outline-none cursor-pointer"
+                            value={sectionAPercent}
+                            onChange={(e) => setSectionAPercent(Number(e.target.value))}
+                            className="bg-transparent text-xs font-black text-indigo-700 dark:text-indigo-300 focus:outline-none cursor-pointer"
                         >
-                            <option value={100}>1.00% (100 bps)</option>
-                            <option value={125}>1.25% (125 bps)</option>
-                            <option value={150}>1.50% (150 bps)</option>
-                            <option value={175}>1.75% (175 bps)</option>
-                            <option value={200}>2.00% (200 bps)</option>
-                            <option value={250}>2.50% (250 bps)</option>
+                            <option value={1.00}>1.00% of Loan</option>
+                            <option value={1.25}>1.25% of Loan</option>
+                            <option value={1.50}>1.50% of Loan (Standard)</option>
+                            <option value={1.75}>1.75% of Loan</option>
+                            <option value={2.00}>2.00% of Loan</option>
+                            <option value={2.50}>2.50% of Loan</option>
                         </select>
                     </div>
                 </div>
             </div>
 
+            {/* Compensation Tier Structure Progress Bar Banner */}
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-3xl border border-indigo-500/20 shadow-xl space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-center space-x-2">
+                        <Sparkles className="w-5 h-5 text-amber-400" />
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-300">
+                            Monthly Company Lead Tier Status ({targetMonthFundedCount} Funded Loans)
+                        </span>
+                    </div>
+
+                    <span className="text-xs font-extrabold px-3 py-1 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/40 self-start sm:self-auto">
+                        Current Tier: {activeTierInfo.label}
+                    </span>
+                </div>
+
+                {/* Visual Tiers Breakdown Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                    {/* Tier 1 */}
+                    <div className={`p-2.5 rounded-2xl border text-center transition-all ${targetMonthFundedCount >= 1 && targetMonthFundedCount <= 5
+                        ? 'bg-indigo-600 text-white border-white shadow-md font-bold'
+                        : 'bg-white/5 border-white/10 text-slate-400'
+                        }`}>
+                        <span className="text-[10px] uppercase font-bold block">1-5 Loans</span>
+                        <span className="text-sm font-black block text-amber-300">10%</span>
+                        <span className="text-[9px] opacity-80 block">Company Rate</span>
+                    </div>
+
+                    {/* Tier 2 */}
+                    <div className={`p-2.5 rounded-2xl border text-center transition-all ${targetMonthFundedCount >= 6 && targetMonthFundedCount <= 11
+                        ? 'bg-indigo-600 text-white border-white shadow-md font-bold'
+                        : 'bg-white/5 border-white/10 text-slate-400'
+                        }`}>
+                        <span className="text-[10px] uppercase font-bold block">6-11 Loans</span>
+                        <span className="text-sm font-black block text-amber-300">15%</span>
+                        <span className="text-[9px] opacity-80 block">Company Rate</span>
+                    </div>
+
+                    {/* Tier 3 */}
+                    <div className={`p-2.5 rounded-2xl border text-center transition-all ${targetMonthFundedCount >= 12 && targetMonthFundedCount <= 20
+                        ? 'bg-indigo-600 text-white border-white shadow-md font-bold'
+                        : 'bg-white/5 border-white/10 text-slate-400'
+                        }`}>
+                        <span className="text-[10px] uppercase font-bold block">12-20 Loans</span>
+                        <span className="text-sm font-black block text-amber-300">20%</span>
+                        <span className="text-[9px] opacity-80 block">Company Rate</span>
+                    </div>
+
+                    {/* Tier 4 */}
+                    <div className={`p-2.5 rounded-2xl border text-center transition-all ${targetMonthFundedCount >= 21
+                        ? 'bg-indigo-600 text-white border-white shadow-md font-bold'
+                        : 'bg-white/5 border-white/10 text-slate-400'
+                        }`}>
+                        <span className="text-[10px] uppercase font-bold block">21+ Loans</span>
+                        <span className="text-sm font-black block text-amber-300">30%</span>
+                        <span className="text-[9px] opacity-80 block">Company Rate</span>
+                    </div>
+
+                    {/* Self Generated Fixed Tier */}
+                    <div className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-emerald-400/40 text-center col-span-2 sm:col-span-1">
+                        <span className="text-[10px] uppercase font-extrabold text-emerald-300 block">Self Generated</span>
+                        <span className="text-sm font-black block text-emerald-300">70%</span>
+                        <span className="text-[9px] text-emerald-200 opacity-90 block">Always Fixed</span>
+                    </div>
+                </div>
+
+                {/* Motivation Goal Bar */}
+                {activeTierInfo.remainingForNextTier > 0 && (
+                    <div className="flex items-center justify-between text-xs text-slate-300 pt-1">
+                        <span className="flex items-center space-x-1.5 font-medium">
+                            <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+                            <span>
+                                Next Goal: <strong>Fund {activeTierInfo.remainingForNextTier} more loan(s)</strong> to unlock the <strong>{activeTierInfo.nextTierLabel}</strong>!
+                            </span>
+                        </span>
+                    </div>
+                )}
+            </div>
+
             {/* Hero KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-                {/* Funded & Closed Volume (The Revenue Generator) */}
+                {/* Total LO Payout Commission */}
                 <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-5 rounded-3xl shadow-lg relative overflow-hidden">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-emerald-100">
-                            {selectedMonth === 'all' ? 'Total Funded Volume' : 'Monthly Funded Volume'}
+                            Est. LO Payout Commission
                         </span>
                         <div className="w-9 h-9 rounded-2xl bg-white/20 text-white flex items-center justify-center backdrop-blur-sm">
                             <Award className="w-5 h-5" />
                         </div>
                     </div>
                     <p className="text-2xl font-black mt-2">
-                        {formatCurrency(fundedValue)}
+                        {formatCurrency(totalCommission)}
                     </p>
                     <div className="mt-2 pt-2 border-t border-white/20 flex items-center justify-between text-xs">
-                        <span className="font-medium text-emerald-100">{fundedLeads.length} closed loans</span>
+                        <span className="font-medium text-emerald-100">{fundedLeads.length} funded deals</span>
                         <span className="font-black bg-white/20 px-2 py-0.5 rounded-lg text-[11px] backdrop-blur-sm">
-                            Est. {formatCurrency(estimatedCommission)}
+                            Sec A: {formatCurrency(totalSectionA)}
                         </span>
                     </div>
                 </div>
 
-                {/* Active In-Process Volume */}
+                {/* Monthly Funded Volume */}
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            Funded Loan Volume
+                        </span>
+                        <div className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                            <TrendingUp className="w-5 h-5" />
+                        </div>
+                    </div>
+                    <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
+                        {formatCurrency(fundedValue)}
+                    </p>
+                    <span className="text-[11px] text-slate-400 mt-1 block">
+                        {selfGenCount} Self-Gen (70%) • {companyLeadCount} Company Deals
+                    </span>
+                </div>
+
+                {/* Active In-Process Volume */}
+                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                             In-Process Pipeline
@@ -241,24 +438,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) =
                     </p>
                     <span className="text-[11px] text-slate-400 mt-1 block">
                         {inProcessLeads.length} active borrower files in workflow
-                    </span>
-                </div>
-
-                {/* In Underwriting / CTC Volume */}
-                <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            In Underwriting / CTC
-                        </span>
-                        <div className="w-9 h-9 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                            <TrendingUp className="w-5 h-5" />
-                        </div>
-                    </div>
-                    <p className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-2">
-                        {formatCurrency(underwritingValue)}
-                    </p>
-                    <span className="text-[11px] text-slate-400 mt-1 block">
-                        {underwritingLeads.length} loans near funding stage
                     </span>
                 </div>
 
@@ -288,10 +467,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) =
                     <div>
                         <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center">
                             <BarChart3 className="w-4 h-4 mr-2 text-indigo-600" />
-                            Month-by-Month Production & Commission Summary
+                            Month-by-Month Production & Tiered Payout Summary
                         </h3>
                         <p className="text-xs text-slate-400 mt-0.5">
-                            Loans automatically calculate into monthly funded volume once moved to "Funded & Closed".
+                            Company lead tier percentage scales automatically based on total funded loans in that month.
                         </p>
                     </div>
                 </div>
@@ -302,17 +481,25 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) =
                             <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
                                 <th className="py-3 px-4">Month</th>
                                 <th className="py-3 px-4">Funded Volume</th>
-                                <th className="py-3 px-4">Closed Deals</th>
+                                <th className="py-3 px-4">Funded Deals</th>
+                                <th className="py-3 px-4">Company Tier</th>
                                 <th className="py-3 px-4">In-Process Volume</th>
-                                <th className="py-3 px-4">Est. LO Revenue ({commissionBps / 100}%)</th>
+                                <th className="py-3 px-4">Est. LO Payout ($)</th>
                                 <th className="py-3 px-4 text-right">Filter</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs">
                             {availableMonths.map((m) => {
                                 const mData = monthlyDataMap[m.key];
-                                const mEstRev = Math.round(mData.fundedVolume * (commissionBps / 10000));
-                                const isCurrent = getMonthKeyAndLabel().key === m.key;
+                                const mFundedCount = mData.fundedLeads.length;
+                                const mTier = getCompanyLeadTierRate(mFundedCount);
+
+                                let mCommissionSum = 0;
+                                mData.fundedLeads.forEach((l) => {
+                                    mCommissionSum += computeLeadCommission(l, mFundedCount).commission;
+                                });
+
+                                const isCurrent = currentMonthKey === m.key;
 
                                 return (
                                     <tr
@@ -334,7 +521,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) =
                                         </td>
 
                                         <td className="py-3.5 px-4 font-bold text-slate-700 dark:text-slate-300">
-                                            {mData.fundedLeads.length} funded
+                                            {mFundedCount} loans
+                                        </td>
+
+                                        <td className="py-3.5 px-4 font-extrabold text-amber-600 dark:text-amber-400">
+                                            {mTier.ratePercent} Rate
                                         </td>
 
                                         <td className="py-3.5 px-4 font-bold text-indigo-600 dark:text-indigo-400">
@@ -342,7 +533,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) =
                                         </td>
 
                                         <td className="py-3.5 px-4 font-black text-slate-900 dark:text-slate-100">
-                                            {formatCurrency(mEstRev)}
+                                            {formatCurrency(mCommissionSum)}
                                         </td>
 
                                         <td className="py-3.5 px-4 text-right">
@@ -364,44 +555,57 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads, stages }) =
                 </div>
             </div>
 
-            {/* Funded Borrower Files List for Selected Period */}
+            {/* Detailed Funded Deals Payout Breakdown */}
             {fundedLeads.length > 0 && (
                 <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-4">
                     <div className="flex items-center justify-between">
                         <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center">
                             <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600" />
-                            Funded & Closed Borrower Deals ({fundedLeads.length})
+                            Funded Deals Commission Breakdown ({fundedLeads.length})
                         </h3>
                         <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
-                            Total: {formatCurrency(fundedValue)}
+                            Total Payout: {formatCurrency(totalCommission)}
                         </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {fundedLeads.map((lead) => {
-                            const dealRev = Math.round(lead.value * (commissionBps / 10000));
+                            const dateToUse = lead.fundedDate || lead.lastContactedAt || lead.createdAt;
+                            const { key } = getMonthKeyAndLabel(dateToUse);
+                            const mFundedCount = (monthlyDataMap[key]?.fundedLeads || []).length;
+                            const dealInfo = computeLeadCommission(lead, mFundedCount);
+
                             return (
                                 <div
                                     key={lead.id}
-                                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-700 space-y-2"
+                                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-700 space-y-2.5"
                                 >
                                     <div className="flex items-center justify-between">
                                         <span className="font-extrabold text-slate-900 dark:text-slate-100 text-xs">
                                             {lead.name}
                                         </span>
-                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                                            Funded
+                                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${dealInfo.isSelfGen
+                                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-300'
+                                            : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300'
+                                            }`}>
+                                            {dealInfo.isSelfGen ? '⭐ Self-Gen (70%)' : `🏢 Company (${dealInfo.rateLabel})`}
                                         </span>
                                     </div>
+
                                     <div className="flex items-center justify-between text-xs">
                                         <span className="text-slate-500 font-medium">{lead.loanType} Loan</span>
-                                        <span className="font-black text-emerald-600 dark:text-emerald-400">
+                                        <span className="font-black text-slate-900 dark:text-slate-100">
                                             {formatCurrency(lead.value)}
                                         </span>
                                     </div>
-                                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-                                        <span>Est. LO Comm: <strong className="text-slate-900 dark:text-slate-100">{formatCurrency(dealRev)}</strong></span>
-                                        <span>{lead.fundedDate || lead.createdAt.slice(0, 10)}</span>
+
+                                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                                        <span className="text-slate-500 text-[11px]">
+                                            Sec A ({sectionAPercent}%): <strong>{formatCurrency(dealInfo.sectionA)}</strong>
+                                        </span>
+                                        <span className="font-black text-emerald-600 dark:text-emerald-400">
+                                            Payout: {formatCurrency(dealInfo.commission)}
+                                        </span>
                                     </div>
                                 </div>
                             );
