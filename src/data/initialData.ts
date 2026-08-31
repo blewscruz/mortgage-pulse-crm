@@ -37,6 +37,8 @@ export const INITIAL_LEADS: Lead[] = [
         nextFollowUpDate: today,
         notes: 'Initial disclosures sent via LoanTek e-sign. Spoke with Elena—they plan to sign tonight after work. Need to confirm intent to proceed.',
         owner: 'You',
+        isSelfGenerated: true,
+        sectionAAmount: 32454,
         source: 'Sarah Jenkins (RE/MAX Partner)',
         hasCoBorrower: true,
         coBorrowerName: 'Elena Vance',
@@ -297,13 +299,15 @@ export const INITIAL_LEADS: Lead[] = [
         nextFollowUpDate: today,
         notes: 'New inquiry looking for $850k Jumbo financing on primary residence purchase. Need initial discovery call today!',
         owner: 'You',
+        isSelfGenerated: true,
+        sectionAAmount: 50205,
         source: 'Zillow Premier',
         activities: [
             {
                 id: 'act-8',
                 type: 'note',
                 title: 'New Lead Inbound Inquiry',
-                description: 'Captured lead from Zillow. Budget: $1.1M purchase price.',
+                description: 'Captured lead from Zillow. Budget: $1.1M purchase price. Section A Fee: $50,205.',
                 timestamp: '2026-08-25T14:10:00Z',
                 author: 'System',
             },
@@ -350,6 +354,8 @@ export const INITIAL_LEADS: Lead[] = [
         nextFollowUpDate: inFiveDays,
         notes: 'Received Clear to Close (CTC) from Underwriting! Final Closing Disclosure (CD) out for review. Signing scheduled for Friday.',
         owner: 'You',
+        isSelfGenerated: true,
+        sectionAAmount: 18500,
         source: 'Past Client Referral',
         activities: [
             {
@@ -404,6 +410,8 @@ export const INITIAL_LEADS: Lead[] = [
         lastContactedAt: '2026-08-20T17:00:00Z',
         notes: 'Loan funded successfully on August 20th! Sent housewarming gift basket and requested Google review.',
         owner: 'You',
+        isSelfGenerated: false,
+        sectionAAmount: 24000,
         source: 'Mark Stevens (Realty One)',
         activities: [
             {

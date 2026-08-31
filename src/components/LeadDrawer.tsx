@@ -15,7 +15,8 @@ import {
     Sparkles,
     Edit3,
     Users,
-    Save
+    Save,
+    Coins
 } from 'lucide-react';
 import type { Lead, Stage, StageId, Task, Activity, DisclosureStatus, DocumentChecklist, LoanType } from '../types/crm';
 import {
@@ -782,6 +783,77 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                                 <p className="text-base font-black text-indigo-600 dark:text-indigo-300 mt-1">
                                     {lead.targetRate || '6.50% 30-Yr'}
                                 </p>
+                            </div>
+                        </div>
+
+                        {/* Dedicated Section A Closing Costs & LO Payout Banner */}
+                        <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/70 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                    <div className="p-2 rounded-xl bg-amber-600 text-white shadow">
+                                        <Coins className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-extrabold text-xs text-amber-950 dark:text-amber-100">
+                                            Section A Origination & Closing Fee
+                                        </h4>
+                                        <p className="text-[11px] text-amber-800 dark:text-amber-300 font-bold mt-0.5">
+                                            {lead.sectionAAmount ? (
+                                                <span className="text-emerald-700 dark:text-emerald-400 font-black">
+                                                    Exact File Cost: {formatCurrency(lead.sectionAAmount)}
+                                                </span>
+                                            ) : (
+                                                <span>Est 1.50%: {formatCurrency(Math.round(lead.value * 0.015))}</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-xl border ${lead.isSelfGenerated ?? (lead.source?.toLowerCase().includes('self') || false)
+                                    ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border-amber-300'
+                                    : 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 border-indigo-300'
+                                    }`}>
+                                    {lead.isSelfGenerated ?? (lead.source?.toLowerCase().includes('self') || false)
+                                        ? '⭐ Self-Gen (70% Comm)'
+                                        : '🏢 Company Lead Tier'}
+                                </span>
+                            </div>
+
+                            <div className="pt-2 border-t border-amber-200 dark:border-amber-800/50 flex items-center justify-between gap-3 text-xs">
+                                <div className="flex items-center space-x-2">
+                                    <label className="text-[11px] font-bold text-amber-900 dark:text-amber-200 shrink-0">
+                                        Section A Amount ($):
+                                    </label>
+                                    <input
+                                        type="number"
+                                        placeholder="e.g. 32454"
+                                        value={editSectionAAmount}
+                                        onChange={(e) => setEditSectionAAmount(e.target.value)}
+                                        onBlur={() => {
+                                            const amt = editSectionAAmount ? Number(editSectionAAmount) : undefined;
+                                            if (amt !== lead.sectionAAmount) {
+                                                onUpdateLead({
+                                                    ...lead,
+                                                    sectionAAmount: amt,
+                                                });
+                                            }
+                                        }}
+                                        className="p-1.5 text-xs font-black bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-xl text-emerald-600 dark:text-emerald-400 w-32 focus:ring-2 focus:ring-amber-500"
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        const newIsSelfGen = !(lead.isSelfGenerated ?? (lead.source?.toLowerCase().includes('self') || false));
+                                        onUpdateLead({
+                                            ...lead,
+                                            isSelfGenerated: newIsSelfGen,
+                                        });
+                                    }}
+                                    className="px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-[11px] shadow transition-all"
+                                >
+                                    Toggle Origin (Self vs Co)
+                                </button>
                             </div>
                         </div>
 
