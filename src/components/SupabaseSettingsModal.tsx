@@ -87,7 +87,7 @@ export const SupabaseSettingsModal: React.FC<SupabaseSettingsModalProps> = ({
     };
 
     const copySqlScript = () => {
-        const sql = `-- MORTGAGE PULSE CRM - SUPABASE SCHEMA
+        const sql = `-- BECRUZ CAPITAL CRM - SUPABASE SCHEMA
 CREATE TABLE IF NOT EXISTS public.leads (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
