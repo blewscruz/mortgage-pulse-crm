@@ -13,7 +13,8 @@ import {
     formatCurrency,
     getDisclosureStatusBadge,
     getLoanTypeBadge,
-    calculateChecklistProgress
+    calculateChecklistProgress,
+    getPriorityBadge
 } from '../utils/crmHelpers';
 
 interface ListViewProps {
@@ -24,6 +25,7 @@ interface ListViewProps {
     onQuickOutreach: (lead: Lead, mode: 'call' | 'email' | 'meeting') => void;
     filters: FilterState;
     onFilterChange: (filters: FilterState) => void;
+    onUpdateLead?: (updatedLead: Lead) => void;
 }
 
 export const ListView: React.FC<ListViewProps> = ({
@@ -34,6 +36,7 @@ export const ListView: React.FC<ListViewProps> = ({
     onQuickOutreach,
     filters,
     onFilterChange,
+    onUpdateLead,
 }) => {
     const exportToCSV = () => {
         const headers = [
@@ -130,6 +133,7 @@ export const ListView: React.FC<ListViewProps> = ({
                         <thead>
                             <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
                                 <th className="py-3.5 px-4">Borrower & File</th>
+                                <th className="py-3.5 px-4">Priority</th>
                                 <th className="py-3.5 px-4">Loan Program & Amount</th>
                                 <th className="py-3.5 px-4">Property & Realtor</th>
                                 <th className="py-3.5 px-4">Disclosures (Discos)</th>
@@ -151,6 +155,7 @@ export const ListView: React.FC<ListViewProps> = ({
                                     const loanBadge = getLoanTypeBadge(lead.loanType);
                                     const discoBadge = getDisclosureStatusBadge(lead.disclosuresStatus);
                                     const docProgress = calculateChecklistProgress(lead.documentChecklist);
+                                    const priorityBadge = getPriorityBadge(lead.priority);
 
                                     return (
                                         <tr
@@ -193,6 +198,23 @@ export const ListView: React.FC<ListViewProps> = ({
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </td>
+
+                                            {/* Priority Selector */}
+                                            <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                                                <select
+                                                    value={lead.priority}
+                                                    onChange={(e) => {
+                                                        if (onUpdateLead) {
+                                                            onUpdateLead({ ...lead, priority: e.target.value as any });
+                                                        }
+                                                    }}
+                                                    className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md border cursor-pointer focus:outline-none ${priorityBadge.color}`}
+                                                >
+                                                    <option value="high">High Priority</option>
+                                                    <option value="medium">Medium Priority</option>
+                                                    <option value="low">Standard</option>
+                                                </select>
                                             </td>
 
                                             {/* Loan Amount */}

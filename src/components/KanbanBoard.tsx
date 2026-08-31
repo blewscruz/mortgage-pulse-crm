@@ -14,6 +14,7 @@ interface KanbanBoardProps {
     onOpenAddLeadWithStage?: (stageId: StageId) => void;
     filters: FilterState;
     onFilterChange: (filters: FilterState) => void;
+    onUpdateLead?: (updatedLead: Lead) => void;
 }
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({
@@ -25,6 +26,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     onOpenAddLeadWithStage,
     filters,
     onFilterChange,
+    onUpdateLead,
 }) => {
     const [dragOverStage, setDragOverStage] = useState<StageId | null>(null);
 
@@ -73,8 +75,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     <button
                         onClick={() => onFilterChange({ ...filters, reachOutStatus: 'all' })}
                         className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${filters.reachOutStatus === 'all'
-                                ? 'bg-indigo-600 text-white shadow-sm'
-                                : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                             }`}
                     >
                         All Loans ({leads.length})
@@ -83,8 +85,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     <button
                         onClick={() => onFilterChange({ ...filters, reachOutStatus: 'overdue' })}
                         className={`px-3 py-1 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-all ${filters.reachOutStatus === 'overdue'
-                                ? 'bg-red-600 text-white shadow-sm'
-                                : 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60'
+                            ? 'bg-red-600 text-white shadow-sm'
+                            : 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60'
                             }`}
                     >
                         <AlertCircle className="w-3 h-3" />
@@ -94,8 +96,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     <button
                         onClick={() => onFilterChange({ ...filters, reachOutStatus: 'due_today' })}
                         className={`px-3 py-1 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-all ${filters.reachOutStatus === 'due_today'
-                                ? 'bg-amber-600 text-white shadow-sm'
-                                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-700/60'
+                            ? 'bg-amber-600 text-white shadow-sm'
+                            : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-700/60'
                             }`}
                     >
                         <Clock className="w-3 h-3" />
@@ -105,8 +107,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     <button
                         onClick={() => onFilterChange({ ...filters, reachOutStatus: 'upcoming' })}
                         className={`px-3 py-1 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-all ${filters.reachOutStatus === 'upcoming'
-                                ? 'bg-emerald-600 text-white shadow-sm'
-                                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
                             }`}
                     >
                         <CheckCircle className="w-3 h-3" />
@@ -148,8 +150,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, stage.id)}
                             className={`w-80 shrink-0 flex flex-col rounded-2xl bg-slate-100/70 dark:bg-slate-900/60 border transition-all duration-200 ${isDraggingOver
-                                    ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-950/20 scale-[1.01]'
-                                    : 'border-slate-200/80 dark:border-slate-800'
+                                ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-950/20 scale-[1.01]'
+                                : 'border-slate-200/80 dark:border-slate-800'
                                 }`}
                         >
                             {/* Column Header */}
@@ -197,6 +199,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                                 onSelectLead={onSelectLead}
                                                 onQuickOutreach={onQuickOutreach}
                                                 onMoveStage={onMoveStage}
+                                                onUpdateLead={onUpdateLead}
                                             />
                                         </div>
                                     ))

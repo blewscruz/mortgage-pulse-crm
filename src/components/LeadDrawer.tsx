@@ -346,18 +346,31 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                     </button>
                 </div>
 
-                {/* Stage Selector */}
-                <select
-                    value={lead.stage}
-                    onChange={(e) => handleStageChange(e.target.value as StageId)}
-                    className="p-1.5 text-xs font-extrabold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-indigo-600 dark:text-indigo-300 focus:outline-none"
-                >
-                    {stages.map((s) => (
-                        <option key={s.id} value={s.id}>
-                            Stage: {s.name}
-                        </option>
-                    ))}
-                </select>
+                {/* Priority & Stage Selectors */}
+                <div className="flex items-center space-x-2">
+                    <select
+                        value={lead.priority}
+                        onChange={(e) => onUpdateLead({ ...lead, priority: e.target.value as any })}
+                        className="p-1.5 text-xs font-extrabold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none"
+                        title="Change Lead Priority"
+                    >
+                        <option value="high">🔴 High Priority</option>
+                        <option value="medium">🟡 Medium Priority</option>
+                        <option value="low">🟢 Standard Priority</option>
+                    </select>
+
+                    <select
+                        value={lead.stage}
+                        onChange={(e) => handleStageChange(e.target.value as StageId)}
+                        className="p-1.5 text-xs font-extrabold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-indigo-600 dark:text-indigo-300 focus:outline-none"
+                    >
+                        {stages.map((s) => (
+                            <option key={s.id} value={s.id}>
+                                Stage: {s.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             {/* Tabs Bar */}
@@ -1109,9 +1122,9 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                                                 <div>
                                                     <div className="flex items-center space-x-2">
                                                         <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${task.type === 'call' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' :
-                                                                task.type === 'meeting' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' :
-                                                                    task.type === 'proposal' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' :
-                                                                        'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300'
+                                                            task.type === 'meeting' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' :
+                                                                task.type === 'proposal' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' :
+                                                                    'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300'
                                                             }`}>
                                                             {task.type === 'call' ? '📞 Call' : task.type === 'meeting' ? '🎥 Meeting' : task.type === 'proposal' ? '✍️ Disclosures' : '📋 Task'}
                                                         </span>

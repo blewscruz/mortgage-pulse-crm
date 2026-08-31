@@ -25,12 +25,14 @@ interface LeadCardProps {
     onSelectLead: (lead: Lead) => void;
     onMoveStage: (leadId: string, newStage: StageId) => void;
     onQuickOutreach: (lead: Lead, mode: 'call' | 'email' | 'meeting') => void;
+    onUpdateLead?: (updatedLead: Lead) => void;
 }
 
 export const LeadCard: React.FC<LeadCardProps> = ({
     lead,
     onSelectLead,
     onQuickOutreach,
+    onUpdateLead,
 }) => {
     const statusInfo = getLeadFollowUpStatus(lead);
     const priorityBadge = getPriorityBadge(lead.priority);
@@ -76,9 +78,24 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                     </div>
                 </div>
 
-                <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md border ${priorityBadge.color}`}>
-                    {priorityBadge.label}
-                </span>
+                {/* Interactive Priority Selector Badge */}
+                <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <select
+                        value={lead.priority}
+                        onChange={(e) => {
+                            if (onUpdateLead) {
+                                onUpdateLead({ ...lead, priority: e.target.value as any });
+                            }
+                        }}
+                        className={`px-2 py-0.5 text-[10px] font-extrabold rounded-md border cursor-pointer focus:outline-none appearance-none pr-4.5 ${priorityBadge.color}`}
+                        title="Click to change Lead Priority"
+                    >
+                        <option value="high">High Priority</option>
+                        <option value="medium">Medium Priority</option>
+                        <option value="low">Standard Priority</option>
+                    </select>
+                    <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none opacity-60">▼</span>
+                </div>
             </div>
 
             {/* Loan Deal Highlights */}

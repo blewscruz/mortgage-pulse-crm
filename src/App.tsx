@@ -377,6 +377,7 @@ export const App: React.FC = () => {
             onOpenAddLeadWithStage={handleOpenAddModalForStage}
             filters={filters}
             onFilterChange={setFilters}
+            onUpdateLead={handleUpdateLead}
           />
         )}
 
@@ -411,6 +412,7 @@ export const App: React.FC = () => {
             onQuickOutreach={handleQuickOutreach}
             filters={filters}
             onFilterChange={setFilters}
+            onUpdateLead={handleUpdateLead}
           />
         )}
 
