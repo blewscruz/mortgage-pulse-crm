@@ -1,8 +1,11 @@
 import type { Lead, NotificationItem, FilterState, Priority, DisclosureStatus, LoanType, DocumentChecklist } from '../types/crm';
 
-export const getTodayString = (): string => {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
+export const getTodayString = (dateInput?: Date): string => {
+    const d = dateInput || new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 export const formatCurrency = (amount: number): string => {
@@ -15,16 +18,17 @@ export const formatCurrency = (amount: number): string => {
 
 export const formatDateDisplay = (dateString?: string): string => {
     if (!dateString) return 'No date';
-    const date = new Date(dateString);
+    const isoDateString = dateString.includes('T') ? dateString : `${dateString}T00:00:00`;
+    const date = new Date(isoDateString);
     if (isNaN(date.getTime())) return dateString;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const targetDate = new Date(dateString);
+    const targetDate = new Date(isoDateString);
     targetDate.setHours(0, 0, 0, 0);
 
     const diffTime = targetDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Tomorrow';

@@ -24,7 +24,8 @@ import {
     formatDateDisplay,
     getDisclosureStatusBadge,
     getLoanTypeBadge,
-    calculateChecklistProgress
+    calculateChecklistProgress,
+    getTodayString
 } from '../utils/crmHelpers';
 
 interface LeadDrawerProps {
@@ -56,7 +57,7 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
 
     const [newNoteText, setNewNoteText] = useState('');
     const [newTaskTitle, setNewTaskTitle] = useState('');
-    const [newTaskDueDate, setNewTaskDueDate] = useState(new Date().toISOString().split('T')[0]);
+    const [newTaskDueDate, setNewTaskDueDate] = useState(getTodayString());
 
     // Editing State
     const [isEditing, setIsEditing] = useState(false);

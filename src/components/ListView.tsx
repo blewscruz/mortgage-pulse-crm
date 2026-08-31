@@ -14,7 +14,8 @@ import {
     getDisclosureStatusBadge,
     getLoanTypeBadge,
     calculateChecklistProgress,
-    getPriorityBadge
+    getPriorityBadge,
+    getTodayString
 } from '../utils/crmHelpers';
 
 interface ListViewProps {
@@ -72,7 +73,7 @@ export const ListView: React.FC<ListViewProps> = ({
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement('a');
         link.setAttribute('href', encodedUri);
-        link.setAttribute('download', `mortgage_pipeline_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `mortgage_pipeline_${getTodayString()}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

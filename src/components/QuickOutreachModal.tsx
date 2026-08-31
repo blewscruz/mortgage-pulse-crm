@@ -12,7 +12,7 @@ import {
     ShieldCheck
 } from 'lucide-react';
 import type { Lead, ActivityType } from '../types/crm';
-import { formatDateDisplay, formatCurrency } from '../utils/crmHelpers';
+import { formatDateDisplay, formatCurrency, getTodayString } from '../utils/crmHelpers';
 
 interface QuickOutreachModalProps {
     isOpen: boolean;
@@ -42,7 +42,7 @@ export const QuickOutreachModal: React.FC<QuickOutreachModalProps> = ({
     const [emailBody, setEmailBody] = useState('');
 
     const [meetingTitle, setMeetingTitle] = useState('');
-    const [meetingDate, setMeetingDate] = useState(new Date().toISOString().split('T')[0]);
+    const [meetingDate, setMeetingDate] = useState(getTodayString());
     const [meetingTime, setMeetingTime] = useState('14:00');
 
     useEffect(() => {
@@ -162,8 +162,8 @@ export const QuickOutreachModal: React.FC<QuickOutreachModalProps> = ({
                     <button
                         onClick={() => setActiveMode('call')}
                         className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-all ${activeMode === 'call'
-                                ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                             }`}
                     >
                         <Phone className="w-3.5 h-3.5" />
@@ -173,8 +173,8 @@ export const QuickOutreachModal: React.FC<QuickOutreachModalProps> = ({
                     <button
                         onClick={() => setActiveMode('email')}
                         className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-all ${activeMode === 'email'
-                                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                             }`}
                     >
                         <Mail className="w-3.5 h-3.5" />
@@ -184,8 +184,8 @@ export const QuickOutreachModal: React.FC<QuickOutreachModalProps> = ({
                     <button
                         onClick={() => setActiveMode('meeting')}
                         className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center space-x-1.5 transition-all ${activeMode === 'meeting'
-                                ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                             }`}
                     >
                         <Calendar className="w-3.5 h-3.5" />
@@ -241,8 +241,8 @@ export const QuickOutreachModal: React.FC<QuickOutreachModalProps> = ({
                                         <button
                                             onClick={() => setIsMuted(!isMuted)}
                                             className={`p-3 rounded-2xl border text-xs font-bold flex-1 flex items-center justify-center space-x-1 ${isMuted
-                                                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-600'
-                                                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                                                ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-600'
+                                                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
                                                 }`}
                                         >
                                             {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}

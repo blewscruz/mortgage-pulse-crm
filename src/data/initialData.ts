@@ -2,9 +2,9 @@ import type { Lead } from '../types/crm';
 import { getTodayString } from '../utils/crmHelpers';
 
 const today = getTodayString();
-const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-const inTwoDays = new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0];
-const inFiveDays = new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0];
+const yesterday = getTodayString(new Date(Date.now() - 86400000));
+const inTwoDays = getTodayString(new Date(Date.now() + 2 * 86400000));
+const inFiveDays = getTodayString(new Date(Date.now() + 5 * 86400000));
 
 export const INITIAL_LEADS: Lead[] = [
     {
